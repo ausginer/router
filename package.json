@@ -2,11 +2,15 @@
   "name": "hilla-router",
   "version": "0.1.0",
   "description": "A tiny frontend router for Hilla, React, Preact, Vue, Svelte, Solid, Lit, Angular, and vanilla JS",
-  "main": "index.js",
+  "main": "",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc -p tsconfig.build.json",
+    "test": "karma run karma.config.cjs"
   },
+  "files": [
+    "*.{d.ts.map,d.ts,js.map,js}"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github/vaadin/hilla-router"
@@ -21,6 +25,20 @@
   ],
   "author": "Vlad Rindevich <vladrin@vaadin.com> (https://github.com/Lodin)",
   "license": "MIT",
+  "exports": {
+    "./index.js": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./navigation.js": {
+      "types": "./navigation.d.ts",
+      "default": "./navigation.js"
+    },
+    "./Router.js": {
+      "types": "./Router.d.ts",
+      "default": "./Router.js"
+    }
+  },
   "devDependencies": {
     "@esm-bundle/chai": "^4.3.4-fix.0",
     "@size-limit/esbuild-why": "^8.2.4",
