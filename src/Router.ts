@@ -1,26 +1,28 @@
-import type { CustomContext } from './types.js';
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference,spaced-comment
+/// <reference types="urlpattern-polyfill" />
 
 export type RouteResult<T = unknown> = Promise<T | null | undefined> | T | null | undefined;
 
-export type RouteParams = Readonly<Record<string, string | undefined>>;
+export type RouteGroups = Readonly<Record<string, string | undefined>>;
 
-export type RouteContext<R = unknown, C extends CustomContext = CustomContext> = Readonly<{
+export type RouteContext<R = unknown, C = unknown> = Readonly<{
   context?: C | null;
   router: Router<R, C>;
   route: Route<R, C>;
   parent: Route<R, C> | null;
   path: URL | string;
-  params: RouteParams;
+  params: RouteGroups;
+  search: RouteGroups;
   next(): RouteResult<R> | undefined;
 }>;
 
-export type Route<R = unknown, C extends CustomContext = CustomContext> = Readonly<{
+export type Route<R = unknown, C = unknown> = Readonly<{
   children?: ReadonlyArray<Route<R, C>> | null;
   path: string;
   action?(context: RouteContext<R, C>): RouteResult<R>;
 }>;
 
-export type RouterErrorHandler<R = unknown, C extends CustomContext = CustomContext> = (
+export type RouterErrorHandler<R = unknown, C = unknown> = (
   path: URL | string,
   error: RouterError,
   context?: C | null,
@@ -46,7 +48,7 @@ function stripJoiners(path: string): string {
   return part;
 }
 
-export default class Router<R = unknown, C extends CustomContext = CustomContext> {
+export default class Router<R = unknown, C = unknown> {
   readonly #routes: ReadonlyArray<Route<R, C>>;
   readonly #patterns = new WeakMap<Route<R, C>, URLPattern>();
   readonly #options?: RouterOptions<R>;
@@ -71,13 +73,12 @@ export default class Router<R = unknown, C extends CustomContext = CustomContext
 
   #patternize(routes: ReadonlyArray<Route<R, C>>, parents: readonly string[] = []): void {
     for (const route of routes) {
-      const base = parents.join('/');
-      const path = stripJoiners(route.path);
-      this.#patterns.set(route, new URLPattern(path, base));
-
+      const path = [...parents, stripJoiners(route.path)];
       if (route.children?.length) {
-        this.#patternize(route.children, [...parents, path]);
+        this.#patternize(route.children, path);
+        path.push('*');
       }
+      this.#patterns.set(route, new URLPattern(path.join('/')));
     }
   }
 
@@ -98,11 +99,12 @@ export default class Router<R = unknown, C extends CustomContext = CustomContext
           route.action?.({
             context,
             next,
-            params: result.search.groups,
+            params: result.pathname.groups,
             parent,
             path,
             route,
             router: this,
+            search: result.search.groups,
           }) ?? next()
         );
       }
