@@ -23,10 +23,14 @@
   "license": "MIT",
   "devDependencies": {
     "@esm-bundle/chai": "^4.3.4-fix.0",
+    "@size-limit/esbuild-why": "^8.2.4",
+    "@size-limit/preset-small-lib": "^8.2.4",
+    "@types/chai-as-promised": "^7.1.5",
     "@types/karma": "^6.3.3",
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.16.2",
     "@types/sinon": "^10.0.14",
+    "chai-as-promised": "^7.1.1",
     "chai-dom": "^1.11.0",
     "eslint": "^8.39.0",
     "eslint-config-vaadin": "^1.0.0-alpha.12",
@@ -44,10 +48,19 @@
     "prettier": "^2.8.8",
     "simple-git-hooks": "^2.8.1",
     "sinon": "^15.0.4",
+    "size-limit": "^8.2.4",
     "typescript": "^5.0.4",
     "vite": "^4.3.3"
   },
   "dependencies": {
     "urlpattern-polyfill": "^8.0.2"
-  }
+  },
+  "size-limit": [
+    {
+      "path": "src/Router.ts"
+    },
+    {
+      "path": "src/navigation.ts"
+    }
+  ]
 }
