@@ -11,16 +11,14 @@ describe('Router', () => {
     it('resolves simple paths', async () => {
       const expected = {};
 
-      const router = new Router([
-        {
-          action() {
-            return expected;
-          },
-          path: '/foo',
+      const router = new Router({
+        action() {
+          return expected;
         },
-      ]);
+        path: '/foo',
+      });
 
-      const actual = await router.resolve(new URL('/foo', BASE_PATH));
+      const actual = await router.resolve('/foo');
       expect(actual).to.equal(expected);
     });
 
@@ -38,48 +36,64 @@ describe('Router', () => {
           },
           path: '/bar/:id(\\d+)',
         },
-        {
-          action({ search }) {
-            return `Baz--${search.query ?? ''}`;
-          },
-          path: '/baz?q=:query',
-        },
       ]);
 
-      let actual = await router.resolve(new URL('/foo/a100', BASE_PATH));
+      let actual = await router.resolve('/foo/a100');
       expect(actual).to.equal('Foo--a100');
 
-      actual = await router.resolve(new URL('/bar/124', BASE_PATH));
+      actual = await router.resolve('/bar/124');
       expect(actual).to.equal('Bar--124');
 
-      await expect(router.resolve(new URL('/bar/a100', BASE_PATH))).to.be.rejectedWith(RouterError);
-
-      actual = await router.resolve(new URL('/baz?q=Baz', BASE_PATH));
-      expect(actual).to.equal('Baz--Baz');
+      await expect(router.resolve('/bar/a100')).to.be.rejectedWith(RouterError);
     });
 
     it('resolves nested paths', async () => {
-      const router = new Router([
-        {
-          async action({ next }) {
-            const result = 'Foo';
-            const child = (await next()) as string;
-            return `${result}--${child}--Baz`;
-          },
-          children: [
-            {
-              action() {
-                return 'Bar';
-              },
-              path: '/bar',
-            },
-          ],
-          path: '/foo',
+      const router = new Router({
+        async action({ next }) {
+          const result = 'Foo';
+          const child = (await next()) as string;
+          return `${result}--${child}--Baz`;
         },
-      ]);
+        children: [
+          {
+            action() {
+              return 'Bar';
+            },
+            path: '/bar',
+          },
+        ],
+        path: '/foo',
+      });
 
-      const actual = await router.resolve(new URL('/foo/bar', BASE_PATH));
+      const actual = await router.resolve('/foo/bar');
       expect(actual).to.equal('Foo--Bar--Baz');
+    });
+
+    it('allows preventing the loading of the nested route', async () => {
+      const router = new Router<string, never>({
+        async action({ next, url }) {
+          if (url.searchParams.has('authenticated')) {
+            return next();
+          }
+
+          return 'Authentication required';
+        },
+        children: [
+          {
+            action() {
+              return 'Hi, User';
+            },
+            path: '/protected',
+          },
+        ],
+        path: '/',
+      });
+
+      let result = await router.resolve('/protected');
+      expect(result).to.equal('Authentication required');
+
+      result = await router.resolve('/protected?authenticated=true');
+      expect(result).to.equal('Hi, User');
     });
   });
 
@@ -88,8 +102,8 @@ describe('Router', () => {
       const router = new Router(
         [
           {
-            action({ path }) {
-              return `Foo--${String(path)}`;
+            action({ url }) {
+              return `Foo--${String(url)}`;
             },
             path: '/foo',
           },
@@ -106,19 +120,17 @@ describe('Router', () => {
 
   describe('Router#resolve', () => {
     it('allows receiving context in actions', async () => {
-      const router = new Router<string, string>([
-        {
-          action({ context }) {
-            return `Foo--${context ?? ''}`;
-          },
-          path: '/foo',
+      const router = new Router<string, string>({
+        action({ context }) {
+          return `Foo--${context ?? ''}`;
         },
-      ]);
+        path: '/foo',
+      });
 
-      let actual = await router.resolve(new URL('/foo', BASE_PATH), 'CTX');
+      let actual = await router.resolve('/foo', 'CTX');
       expect(actual).to.equal('Foo--CTX');
 
-      actual = await router.resolve(new URL('/foo', BASE_PATH), 'XTC');
+      actual = await router.resolve('/foo', 'XTC');
       expect(actual).to.equal('Foo--XTC');
     });
   });
