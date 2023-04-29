@@ -1,18 +1,14 @@
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference,spaced-comment
 /// <reference types="urlpattern-polyfill" />
-
 export type RouteResult<T = unknown> = Promise<T | null | undefined> | T | null | undefined;
-
-export type RouteGroups = Readonly<Record<string, string | undefined>>;
 
 export type RouteContext<R = unknown, C = unknown> = Readonly<{
   context?: C | null;
   router: Router<R, C>;
   route: Route<R, C>;
   parent: Route<R, C> | null;
-  path: URL | string;
-  params: RouteGroups;
-  search: RouteGroups;
+  params: Readonly<Record<string, string | undefined>>;
+  url: URL;
   next(): RouteResult<R> | undefined;
 }>;
 
@@ -42,11 +38,7 @@ export class RouterError extends Error {
   }
 }
 
-const urlJoinersPattern = /^\/*(.*?)\/*$/u;
-function stripJoiners(path: string): string {
-  const [, part] = urlJoinersPattern.exec(path) ?? [];
-  return part;
-}
+type CopyableURLPatternProperties = keyof Omit<URLPattern, 'exec' | 'test'>;
 
 export default class Router<R = unknown, C = unknown> {
   readonly #routes: ReadonlyArray<Route<R, C>>;
@@ -56,7 +48,7 @@ export default class Router<R = unknown, C = unknown> {
   constructor(routes: ReadonlyArray<Route<R, C>> | Route<R, C>, options?: RouterOptions<R>) {
     this.#routes = Array.isArray(routes) ? (routes as ReadonlyArray<Route<R, C>>) : [routes as Route<R, C>];
     this.#options = options;
-    this.#patternize(this.#routes, [stripJoiners(String(options?.baseURL ?? location.origin))]);
+    this.#patternize(this.#routes, [String(this.#options?.baseURL ?? location.origin)]);
   }
 
   async resolve(path: URL | string, context?: C | null): Promise<RouteResult<R>> {
@@ -73,12 +65,26 @@ export default class Router<R = unknown, C = unknown> {
 
   #patternize(routes: ReadonlyArray<Route<R, C>>, parents: readonly string[] = []): void {
     for (const route of routes) {
-      const path = [...parents, stripJoiners(route.path)];
+      const path = [...parents, route.path];
       if (route.children?.length) {
         this.#patternize(route.children, path);
         path.push('*');
       }
-      this.#patterns.set(route, new URLPattern(path.join('/')));
+      const pattern = new URLPattern(
+        path
+          .map((p) => p.replace(/^\/*(.*)\/*/u, '$1'))
+          .filter(Boolean)
+          .join('/'),
+      );
+      const init: URLPatternInit = {};
+
+      // eslint-disable-next-line no-restricted-syntax
+      for (const propertyName in pattern)
+        init[propertyName as CopyableURLPatternProperties] = pattern[propertyName as CopyableURLPatternProperties]
+          ? pattern[propertyName as CopyableURLPatternProperties]
+          : '*';
+
+      this.#patterns.set(route, new URLPattern(init));
     }
   }
 
@@ -89,8 +95,9 @@ export default class Router<R = unknown, C = unknown> {
     context: C | null | undefined,
   ): Promise<RouteResult<R>> {
     for (const route of routes) {
+      const url = new URL(path, this.#options?.baseURL ?? location.origin);
       // There cannot be a router without appropriate pattern, so we can safely suppress null
-      const result = this.#patterns.get(route)!.exec(path);
+      const result = this.#patterns.get(route)!.exec(url);
 
       if (result) {
         const next = async () => (route.children ? this.#resolve(path, route.children, route, context) : undefined);
@@ -101,10 +108,9 @@ export default class Router<R = unknown, C = unknown> {
             next,
             params: result.pathname.groups,
             parent,
-            path,
             route,
             router: this,
-            search: result.search.groups,
+            url,
           }) ?? next()
         );
       }
