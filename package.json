@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "test": "karma run karma.config.cjs"
+    "test": "karma start karma.config.cjs",
+    "test:watch": "npm run test -- --watch",
+    "test:cover": "npm run test -- --coverage"
   },
   "files": [
     "*.{d.ts.map,d.ts,js.map,js}"
@@ -48,6 +50,7 @@
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.16.2",
     "@types/sinon": "^10.0.14",
+    "@types/sinon-chai": "^3.2.9",
     "chai-as-promised": "^7.1.1",
     "chai-dom": "^1.11.0",
     "eslint": "^8.39.0",
@@ -71,6 +74,7 @@
     "vite": "^4.3.3"
   },
   "dependencies": {
+    "sinon-chai": "^3.7.0",
     "urlpattern-polyfill": "^8.0.2"
   },
   "size-limit": [

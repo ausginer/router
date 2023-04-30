@@ -3,6 +3,7 @@
     "vaadin/typescript-requiring-type-checking",
     "vaadin/imports-typescript",
     "vaadin/lit",
-    "vaadin/prettier"
+    "vaadin/prettier",
+    "vaadin/testing"
   ]
 }
