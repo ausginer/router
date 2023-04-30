@@ -19,14 +19,14 @@ export type Route<R = unknown, C = unknown> = Readonly<{
 }>;
 
 export type RouterErrorHandler<R = unknown, C = unknown> = (
-  path: URL | string,
+  path: URL,
   error: RouterError,
   context?: C | null,
 ) => RouteResult<R>;
 
-export type RouterOptions<R = unknown> = Readonly<{
-  baseURL: URL | string;
-  errorHandler?: RouterErrorHandler<R>;
+export type RouterOptions<R = unknown, C = unknown> = Readonly<{
+  baseURL?: URL | string;
+  errorHandler?: RouterErrorHandler<R, C>;
 }>;
 
 export class RouterError extends Error {
@@ -43,12 +43,14 @@ type CopyableURLPatternProperties = keyof Omit<URLPattern, 'exec' | 'test'>;
 export default class Router<R = unknown, C = unknown> {
   readonly #routes: ReadonlyArray<Route<R, C>>;
   readonly #patterns = new WeakMap<Route<R, C>, URLPattern>();
-  readonly #options?: RouterOptions<R>;
+  readonly #options?: RouterOptions<R, C>;
+  readonly #baseURL: string;
 
-  constructor(routes: ReadonlyArray<Route<R, C>> | Route<R, C>, options?: RouterOptions<R>) {
+  constructor(routes: ReadonlyArray<Route<R, C>> | Route<R, C>, options?: RouterOptions<R, C>) {
     this.#routes = Array.isArray(routes) ? (routes as ReadonlyArray<Route<R, C>>) : [routes as Route<R, C>];
     this.#options = options;
-    this.#patternize(this.#routes, [String(this.#options?.baseURL ?? location.origin)]);
+    this.#baseURL = String(this.#options?.baseURL ?? location.origin);
+    this.#patternize(this.#routes, [this.#baseURL]);
   }
 
   async resolve(path: URL | string, context?: C | null): Promise<RouteResult<R>> {
@@ -56,7 +58,7 @@ export default class Router<R = unknown, C = unknown> {
       return await this.#resolve(path, this.#routes, null, context);
     } catch (e: unknown) {
       if (e instanceof RouterError && this.#options?.errorHandler) {
-        return this.#options.errorHandler(path, e, context);
+        return this.#options.errorHandler(new URL(path, this.#baseURL), e, context);
       }
 
       throw e;
@@ -94,8 +96,9 @@ export default class Router<R = unknown, C = unknown> {
     parent: Route<R, C> | null,
     context: C | null | undefined,
   ): Promise<RouteResult<R>> {
+    const url = new URL(path, this.#baseURL);
+
     for (const route of routes) {
-      const url = new URL(path, this.#options?.baseURL ?? location.origin);
       // There cannot be a router without appropriate pattern, so we can safely suppress null
       const result = this.#patterns.get(route)!.exec(url);
 
@@ -116,6 +119,6 @@ export default class Router<R = unknown, C = unknown> {
       }
     }
 
-    throw new RouterError(404, `Page ${String(path)} is not found`);
+    throw new RouterError(404, `Page ${String(url)} is not found`);
   }
 }

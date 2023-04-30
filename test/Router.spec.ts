@@ -95,6 +95,22 @@ describe('Router', () => {
       result = await router.resolve('/protected?authenticated=true');
       expect(result).to.equal('Hi, User');
     });
+
+    it('allows omitting "action" for the parent route', async () => {
+      const router = new Router<string, string>({
+        children: [
+          {
+            action() {
+              return 'Bar';
+            },
+            path: '/bar',
+          },
+        ],
+        path: '/foo',
+      });
+      const result = await router.resolve('/foo/bar');
+      expect(result).to.equal('Bar');
+    });
   });
 
   describe('options', () => {
@@ -115,6 +131,25 @@ describe('Router', () => {
 
       const actual = await router.resolve(new URL('/foo', 'https://vaadin.com'));
       expect(actual).to.equal('Foo--https://vaadin.com/foo');
+    });
+
+    it('allows specifying custom error handler', async () => {
+      const router = new Router<string, string>(
+        {
+          action() {
+            return 'Foo';
+          },
+          path: '/foo',
+        },
+        {
+          errorHandler(_, error, context) {
+            return `[${error.status}]: ${error.message}.\n\n${context ?? ''}`;
+          },
+        },
+      );
+
+      const result = await router.resolve('/bar', 'FOO');
+      expect(result).to.equal(`[404]: Page ${new URL('/bar', BASE_PATH).toString()} is not found.\n\nFOO`);
     });
   });
 
