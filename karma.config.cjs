@@ -6,7 +6,6 @@ const karmaMocha = require('karma-mocha');
 const karmaSpecReporter = require('karma-spec-reporter');
 const karmaVite = require('karma-vite');
 
-// The current package, one of the packages in the `packages` dir
 const cwd = process.cwd();
 
 const {
@@ -60,11 +59,5 @@ module.exports = (config) => {
       dir: '.coverage/',
       reporters: [!isCI && { type: 'html', subdir: 'html' }, { type: 'lcovonly', subdir: '.' }].filter(Boolean),
     },
-
-    vite: {
-      config: {
-        cacheDir: resolve(cwd, '.vite'),
-      }
-    }
   });
 };
