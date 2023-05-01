@@ -111,6 +111,15 @@ describe('Router', () => {
       const result = await router.resolve('/foo/bar');
       expect(result).to.equal('Bar');
     });
+
+    it('returns undefined if the leaf child has no action', async () => {
+      const router = new Router<undefined, string>({
+        path: '/foo',
+      });
+
+      const result = await router.resolve('/foo');
+      expect(result).to.be.undefined;
+    });
   });
 
   describe('options', () => {

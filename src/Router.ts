@@ -65,7 +65,7 @@ export default class Router<R = unknown, C = unknown> {
     }
   }
 
-  #patternize(routes: ReadonlyArray<Route<R, C>>, parents: readonly string[] = []): void {
+  #patternize(routes: ReadonlyArray<Route<R, C>>, parents: readonly string[]): void {
     for (const route of routes) {
       const path = [...parents, route.path];
       if (route.children?.length) {
