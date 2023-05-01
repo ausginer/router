@@ -58,10 +58,10 @@ describe('Navigation', () => {
       navigate(new URL('/bar', BASE_PATH));
       addEventListener(
         'popstate',
-        ({ state: { context } }) => {
+        ({ state }) => {
           // History serializes object to store it, so the recovered object cannot be
           // strictly equal to the original one.
-          expect(context).to.deep.equal(ctx);
+          expect((state as HistoryState<typeof ctx> | null | undefined)?.context).to.deep.equal(ctx);
           done();
         },
         { once: true },
@@ -72,8 +72,13 @@ describe('Navigation', () => {
   });
 
   describe('addNavigationListener', () => {
+    let state: HistoryState<string>;
+
+    beforeEach(() => {
+      state = { context: 'bar', path: '/foo' };
+    });
+
     it('listens for popstate event', () => {
-      const state: HistoryState<string> = { context: 'bar', path: '/foo' };
       const spy = sinon.spy();
       addNavigationListener(spy);
       dispatchEvent(new PopStateEvent('popstate', { state }));
@@ -81,13 +86,16 @@ describe('Navigation', () => {
       expect(spy).to.have.been.calledWith('/foo', 'bar');
     });
 
-    it('allows to set listener options', () => {
+    it('accepts listener options', () => {
+      const controller = new AbortController();
       const spy = sinon.spy();
-      addNavigationListener(spy, { once: true });
-      const event = new PopStateEvent('popstate');
+      addNavigationListener(spy, { signal: controller.signal });
+      const event = new PopStateEvent('popstate', { state });
       dispatchEvent(event);
       dispatchEvent(event);
-      expect(spy).to.have.been.calledOnce;
+      controller.abort();
+      dispatchEvent(event);
+      expect(spy).to.have.been.calledTwice;
     });
   });
 });
