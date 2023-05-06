@@ -1,32 +1,36 @@
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference,spaced-comment
 /// <reference types="urlpattern-polyfill" />
-export type RouteResult<T = unknown> = Promise<T | null | undefined> | T | null | undefined;
+export type ActionResult<T> = Promise<T | null | undefined> | T | null | undefined;
 
-export type RouteContext<R = unknown, C = unknown> = Readonly<{
-  context?: C | null;
-  router: Router<R, C>;
-  route: Route<R, C>;
-  parent: Route<R, C> | null;
-  params: Readonly<Record<string, string | undefined>>;
-  url: URL;
-  next(): RouteResult<R> | undefined;
-}>;
+export interface Route<T = unknown, C extends Record<string, unknown> = Record<never, never>> {
+  readonly children?: readonly this[] | null;
+  readonly path: string;
+  action?(context: RouteContext<T, C, this>): ActionResult<T>;
+}
 
-export type Route<R = unknown, C = unknown> = Readonly<{
-  children?: ReadonlyArray<Route<R, C>> | null;
-  path: string;
-  action?(context: RouteContext<R, C>): RouteResult<R>;
-}>;
+export type RouteContext<
+  T = unknown,
+  C extends Record<string, unknown> = Record<never, never>,
+  R extends Route<T, C> = Route<T, C>,
+> = C &
+  Readonly<{
+    params: Readonly<Record<string, string | undefined>>;
+    parent: R | null;
+    route: R;
+    router: Router<R>;
+    url: URL;
+    next(): Promise<T | null | undefined>;
+  }>;
 
-export type RouterErrorHandler<R = unknown, C = unknown> = (
+export type RouterErrorHandler<T = unknown, C extends Record<string, unknown> = Record<never, never>> = (
   path: URL,
   error: RouterError,
   context?: C | null,
-) => RouteResult<R>;
+) => ActionResult<T>;
 
-export type RouterOptions<R = unknown, C = unknown> = Readonly<{
+export type RouterOptions<T = unknown, C extends Record<string, unknown> = Record<never, never>> = Readonly<{
   baseURL?: URL | string;
-  errorHandler?: RouterErrorHandler<R, C>;
+  errorHandler?: RouterErrorHandler<T, C>;
 }>;
 
 export class RouterError extends Error {
@@ -40,20 +44,23 @@ export class RouterError extends Error {
 
 type CopyableURLPatternProperties = keyof Omit<URLPattern, 'exec' | 'test'>;
 
-export default class Router<R = unknown, C = unknown> {
-  readonly #routes: ReadonlyArray<Route<R, C>>;
-  readonly #patterns = new WeakMap<Route<R, C>, URLPattern>();
-  readonly #options?: RouterOptions<R, C>;
+type Output<R> = R extends Route<infer T> ? T : never;
+type Context<R> = R extends Route<unknown, infer T> ? T : never;
+
+export default class Router<R extends Route> {
+  readonly #routes: readonly R[];
+  readonly #patterns = new WeakMap<R, URLPattern>();
+  readonly #options?: RouterOptions<Output<R>, Context<R>>;
   readonly #baseURL: string;
 
-  constructor(routes: ReadonlyArray<Route<R, C>> | Route<R, C>, options?: RouterOptions<R, C>) {
-    this.#routes = Array.isArray(routes) ? (routes as ReadonlyArray<Route<R, C>>) : [routes as Route<R, C>];
+  constructor(routes: R | readonly R[], options?: RouterOptions<Output<R>, Context<R>>) {
+    this.#routes = Array.isArray(routes) ? (routes as readonly R[]) : [routes as R];
     this.#options = options;
     this.#baseURL = String(this.#options?.baseURL ?? location.origin);
     this.#patternize(this.#routes, [this.#baseURL]);
   }
 
-  async resolve(path: URL | string, context?: C | null): Promise<RouteResult<R>> {
+  async resolve(path: URL | string, context?: Context<R> | null): Promise<Output<R> | null | undefined> {
     try {
       return await this.#resolve(path, this.#routes, null, context);
     } catch (e: unknown) {
@@ -65,7 +72,7 @@ export default class Router<R = unknown, C = unknown> {
     }
   }
 
-  #patternize(routes: ReadonlyArray<Route<R, C>>, parents: readonly string[]): void {
+  #patternize(routes: readonly R[], parents: readonly string[]): void {
     for (const route of routes) {
       const path = [...parents, route.path];
       if (route.children?.length) {
@@ -92,10 +99,10 @@ export default class Router<R = unknown, C = unknown> {
 
   async #resolve(
     path: URL | string,
-    routes: ReadonlyArray<Route<R, C>>,
-    parent: Route<R, C> | null,
-    context: C | null | undefined,
-  ): Promise<RouteResult<R>> {
+    routes: readonly R[],
+    parent: R | null,
+    context: Context<R> | null | undefined,
+  ): Promise<Output<R> | null | undefined> {
     const url = new URL(path, this.#baseURL);
 
     for (const route of routes) {
@@ -106,15 +113,15 @@ export default class Router<R = unknown, C = unknown> {
         const next = async () => (route.children ? this.#resolve(path, route.children, route, context) : undefined);
 
         return (
-          route.action?.({
-            context,
+          (route.action?.({
+            ...context,
             next,
             params: result.pathname.groups,
             parent,
             route,
             router: this,
             url,
-          }) ?? next()
+          }) as ActionResult<Output<R>>) ?? next()
         );
       }
     }
