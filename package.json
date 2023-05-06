@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.build.json",
     "test": "karma start karma.config.cjs",
     "test:watch": "npm run test -- --watch",
-    "test:cover": "npm run test -- --coverage"
+    "test:cover": "npm run test -- --coverage",
+    "size": "size-limit"
   },
   "files": [
     "*.{d.ts.map,d.ts,js.map,js}"
@@ -69,20 +70,20 @@
     "prettier": "^2.8.8",
     "simple-git-hooks": "^2.8.1",
     "sinon": "^15.0.4",
+    "sinon-chai": "^3.7.0",
     "size-limit": "^8.2.4",
     "typescript": "^5.0.4",
     "vite": "^4.3.3"
   },
   "dependencies": {
-    "sinon-chai": "^3.7.0",
     "urlpattern-polyfill": "^8.0.2"
   },
   "size-limit": [
     {
-      "path": "src/Router.ts"
-    },
-    {
-      "path": "src/navigation.ts"
+      "path": [
+        "src/Router.ts",
+        "src/navigation.ts"
+      ]
     }
   ]
 }
