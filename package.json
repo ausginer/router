@@ -29,6 +29,10 @@
   "author": "Vlad Rindevich <vladrin@vaadin.com> (https://github.com/Lodin)",
   "license": "MIT",
   "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
     "./index.js": {
       "types": "./index.d.ts",
       "default": "./index.js"
