@@ -82,16 +82,19 @@ export default class Router<R extends Route> {
         pathParts.push('*');
       }
 
-      const path = `/${pathParts
-        .map((p) => p.replace(/^\/*(.*)\/*/u, '$1'))
-        .filter(Boolean)
-        .join('/')}`;
+      const pattern = new URLPattern(
+        `${this.#baseURL}/${this.#options?.hash ? '#/' : ''}${pathParts
+          .map((p) => p.replace(/^\/*(.*)\/*/u, '$1'))
+          .filter(Boolean)
+          .join('/')}`,
+      );
+      const init: URLPatternInit = {};
 
-      const init: URLPatternInit = {
-        baseURL: this.#baseURL,
-        ...(this.#options?.hash ? { hash: path, pathname: '*' } : { hash: '*', pathname: path }),
-        search: '*',
-      };
+      // eslint-disable-next-line no-restricted-syntax
+      for (const propertyName in pattern)
+        init[propertyName as CopyableURLPatternProperties] = pattern[propertyName as CopyableURLPatternProperties]
+          ? pattern[propertyName as CopyableURLPatternProperties]
+          : '*';
 
       this.#patterns.set(route, new URLPattern(init));
     }
