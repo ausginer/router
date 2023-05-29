@@ -188,6 +188,23 @@ describe('Router', () => {
       const result = await router.resolve('/bar', { data: 'FOO' });
       expect(result).to.equal(`[404]: Page ${new URL('/bar', BASE_PATH).toString()} is not found.\n\nFOO`);
     });
+
+    it('allows using hash instead of the full URL', async () => {
+      const router = new Router(
+        [
+          {
+            action() {
+              return `Foo`;
+            },
+            path: '/foo',
+          },
+        ] as ReadonlyArray<Route<string>>,
+        { hash: true },
+      );
+
+      const result = await router.resolve('#/foo');
+      expect(result).to.equal('Foo');
+    });
   });
 
   describe('Router#resolve', () => {

@@ -30,6 +30,7 @@ export type RouterErrorHandler<T = unknown, C extends Record<string, unknown> = 
 
 export type RouterOptions<T = unknown, C extends Record<string, unknown> = Record<never, never>> = Readonly<{
   baseURL?: URL | string;
+  hash?: boolean;
   errorHandler?: RouterErrorHandler<T, C>;
 }>;
 
@@ -57,7 +58,7 @@ export default class Router<R extends Route> {
     this.#routes = Array.isArray(routes) ? (routes as readonly R[]) : [routes as R];
     this.#options = options;
     this.#baseURL = String(this.#options?.baseURL ?? location.origin);
-    this.#patternize(this.#routes, [this.#baseURL]);
+    this.#patternize(this.#routes);
   }
 
   async resolve(path: URL | string, context?: Context<R> | null): Promise<Output<R> | null | undefined> {
@@ -72,26 +73,25 @@ export default class Router<R extends Route> {
     }
   }
 
-  #patternize(routes: readonly R[], parents: readonly string[]): void {
+  #patternize(routes: readonly R[], parents: readonly string[] = []): void {
     for (const route of routes) {
-      const path = [...parents, route.path];
-      if (route.children?.length) {
-        this.#patternize(route.children, path);
-        path.push('*');
-      }
-      const pattern = new URLPattern(
-        path
-          .map((p) => p.replace(/^\/*(.*)\/*/u, '$1'))
-          .filter(Boolean)
-          .join('/'),
-      );
-      const init: URLPatternInit = {};
+      const pathParts = [...parents, route.path];
 
-      // eslint-disable-next-line no-restricted-syntax
-      for (const propertyName in pattern)
-        init[propertyName as CopyableURLPatternProperties] = pattern[propertyName as CopyableURLPatternProperties]
-          ? pattern[propertyName as CopyableURLPatternProperties]
-          : '*';
+      if (route.children?.length) {
+        this.#patternize(route.children, pathParts);
+        pathParts.push('*');
+      }
+
+      const path = `/${pathParts
+        .map((p) => p.replace(/^\/*(.*)\/*/u, '$1'))
+        .filter(Boolean)
+        .join('/')}`;
+
+      const init: URLPatternInit = {
+        baseURL: this.#baseURL,
+        ...(this.#options?.hash ? { hash: path, pathname: '*' } : { hash: '*', pathname: path }),
+        search: '*',
+      };
 
       this.#patterns.set(route, new URLPattern(init));
     }
