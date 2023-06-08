@@ -5,7 +5,10 @@
   "main": "",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "clean": "git clean -Xf . -e !.idea -e !.idea/**/* -e !.vscode -e !.vscode/**/* -e !node_modules -e !node_modules/**/* -n",
+    "build": "concurrently npm:build:code npm:build:declaration",
+    "build:code": "tsx scripts/build.ts",
+    "build:declaration": "tsc -p tsconfig.build.json --emitDeclarationOnly",
     "test": "karma start karma.config.cjs",
     "test:watch": "npm run test -- --watch",
     "test:cover": "npm run test -- --coverage",
@@ -16,11 +19,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github/vaadin/hilla-router"
+    "url": "https://github/ausginer/router"
   },
   "keywords": [
     "router",
-    "hilla",
     "universal",
     "routing",
     "routes",
@@ -46,6 +48,9 @@
       "default": "./Router.js"
     }
   },
+  "overrides": {
+    "esbuild": "$esbuild"
+  },
   "devDependencies": {
     "@esm-bundle/chai": "^4.3.4-fix.0",
     "@size-limit/esbuild-why": "^8.2.4",
@@ -58,6 +63,8 @@
     "@types/sinon-chai": "^3.2.9",
     "chai-as-promised": "^7.1.1",
     "chai-dom": "^1.11.0",
+    "concurrently": "^8.1.0",
+    "esbuild": "^0.17.19",
     "eslint": "^8.39.0",
     "eslint-config-vaadin": "^1.0.0-alpha.12",
     "karma": "^6.4.2",
@@ -72,10 +79,12 @@
     "micromatch": "^4.0.5",
     "mocha": "^10.2.0",
     "prettier": "^2.8.8",
+    "rollup": "^3.24.0",
     "simple-git-hooks": "^2.8.1",
     "sinon": "^15.0.4",
     "sinon-chai": "^3.7.0",
     "size-limit": "^8.2.4",
+    "tsx": "^3.12.7",
     "typescript": "^5.0.4",
     "vite": "^4.3.3"
   },
@@ -85,8 +94,8 @@
   "size-limit": [
     {
       "path": [
-        "src/Router.ts",
-        "src/navigation.ts"
+        "Router.js",
+        "navigation.js"
       ]
     }
   ]

@@ -1,6 +1,7 @@
 {
   "extends": ["./tsconfig.json"],
   "compilerOptions": {
+    "alwaysStrict": false,
     "declaration": true,
     "declarationMap": true,
     "isolatedModules": true,

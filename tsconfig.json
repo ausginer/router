@@ -16,6 +16,6 @@
     "useDefineForClassFields": true,
     "noEmit": true
   },
-  "include": ["src/**/*", "test/**/*", ".lintstagedrc.js", "vite.config.ts"],
+  "include": ["scripts/**/*", "src/**/*", "test/**/*", ".lintstagedrc.js", "vite.config.ts"],
   "exclude": ["node_modules"]
 }
