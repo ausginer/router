@@ -37,8 +37,8 @@ export type RouterOptions<T = unknown, C extends Record<string, unknown> = Recor
 export class RouterError extends Error {
   readonly status: number;
 
-  constructor(status: number, message?: string, options?: ErrorOptions) {
-    super(message, options);
+  constructor(status: number, url?: URL, options?: ErrorOptions) {
+    super(url?.toString(), options);
     this.status = status;
   }
 }
@@ -129,6 +129,6 @@ export default class Router<R extends Route> {
       }
     }
 
-    throw new RouterError(404, `Page ${String(url)} is not found`);
+    throw new RouterError(404, url);
   }
 }
