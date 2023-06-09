@@ -61,6 +61,14 @@ export default class Router<R extends Route> {
     this.#patternize(this.#routes);
   }
 
+  get routes(): readonly R[] {
+    return this.#routes;
+  }
+
+  get options(): RouterOptions<Output<R>, Context<R>> | undefined {
+    return this.#options;
+  }
+
   async resolve(path: URL | string, context?: Context<R> | null): Promise<Output<R> | null | undefined> {
     try {
       return await this.#resolve(path, this.#routes, null, context);
