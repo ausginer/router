@@ -2,33 +2,40 @@
 /// <reference types="urlpattern-polyfill" />
 export type ActionResult<T> = Promise<T | null | undefined> | T | null | undefined;
 
-export interface Route<T = unknown, C extends Record<string, unknown> = Record<never, never>> {
-  readonly children?: readonly this[] | null;
-  readonly path: string;
-  action?(context: RouteContext<T, C, this>): ActionResult<T>;
-}
+export type EmptyRecord = Record<never, never>;
+
+export type Route<
+  T = unknown,
+  A extends Record<string, unknown> = EmptyRecord,
+  C extends Record<string, unknown> = EmptyRecord,
+> = A &
+  Readonly<{
+    readonly children?: ReadonlyArray<Route<T, A, C>> | null;
+    readonly path: string;
+    action?(context: RouteContext<T, A, C>): ActionResult<T>;
+  }>;
 
 export type RouteContext<
   T = unknown,
-  C extends Record<string, unknown> = Record<never, never>,
-  R extends Route<T, C> = Route<T, C>,
+  A extends Record<string, unknown> = EmptyRecord,
+  C extends Record<string, unknown> = EmptyRecord,
 > = C &
   Readonly<{
     params: Readonly<Record<string, string | undefined>>;
-    parent: R | null;
-    route: R;
-    router: Router<R>;
+    parent: Route<T, A, C> | null;
+    route: Route<T, A, C>;
+    router: Router<T, A, C>;
     url: URL;
     next(): Promise<T | null | undefined>;
   }>;
 
-export type RouterErrorHandler<T = unknown, C extends Record<string, unknown> = Record<never, never>> = (
+export type RouterErrorHandler<T = unknown, C extends Record<string, unknown> = EmptyRecord> = (
   path: URL,
   error: RouterError,
-  context?: C | null,
+  context: C,
 ) => ActionResult<T>;
 
-export type RouterOptions<T = unknown, C extends Record<string, unknown> = Record<never, never>> = Readonly<{
+export type RouterOptions<T = unknown, C extends Record<string, unknown> = EmptyRecord> = Readonly<{
   baseURL?: URL | string;
   hash?: boolean;
   errorHandler?: RouterErrorHandler<T, C>;
@@ -44,44 +51,47 @@ export class RouterError extends Error {
 }
 
 type CopyableURLPatternProperties = keyof Omit<URLPattern, 'exec' | 'test'>;
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+type OptionalParameter<T extends Record<string, unknown>> = keyof T extends never ? void : T;
 
-type Output<R> = R extends Route<infer T> ? T : never;
-type Context<R> = R extends Route<unknown, infer T> ? T : never;
-
-export default class Router<R extends Route> {
-  readonly #routes: readonly R[];
-  readonly #patterns = new WeakMap<R, URLPattern>();
-  readonly #options?: RouterOptions<Output<R>, Context<R>>;
+export default class Router<
+  T = unknown,
+  A extends Record<string, unknown> = EmptyRecord,
+  C extends Record<string, unknown> = EmptyRecord,
+> {
+  readonly #routes: ReadonlyArray<Route<T, A, C>>;
+  readonly #patterns = new WeakMap<Route<T, A, C>, URLPattern>();
+  readonly #options?: RouterOptions<T, C>;
   readonly #baseURL: string;
 
-  constructor(routes: R | readonly R[], options?: RouterOptions<Output<R>, Context<R>>) {
-    this.#routes = Array.isArray(routes) ? (routes as readonly R[]) : [routes as R];
+  constructor(routes: ReadonlyArray<Route<T, A, C>> | Route<T, A, C>, options?: RouterOptions<T, C>) {
+    this.#routes = Array.isArray(routes) ? routes : [routes];
     this.#options = options;
     this.#baseURL = String(this.#options?.baseURL ?? location.origin);
     this.#patternize(this.#routes);
   }
 
-  get routes(): readonly R[] {
+  get routes(): ReadonlyArray<Route<T, A, C>> {
     return this.#routes;
   }
 
-  get options(): RouterOptions<Output<R>, Context<R>> | undefined {
+  get options(): RouterOptions<T, C> | undefined {
     return this.#options;
   }
 
-  async resolve(path: URL | string, context?: Context<R> | null): Promise<Output<R> | null | undefined> {
+  async resolve(path: URL | string, context: OptionalParameter<C>): Promise<T | null | undefined> {
     try {
       return await this.#resolve(path, this.#routes, null, context);
     } catch (e: unknown) {
       if (e instanceof RouterError && this.#options?.errorHandler) {
-        return this.#options.errorHandler(new URL(path, this.#baseURL), e, context);
+        return this.#options.errorHandler(new URL(path, this.#baseURL), e, context as C);
       }
 
       throw e;
     }
   }
 
-  #patternize(routes: readonly R[], parents: readonly string[] = []): void {
+  #patternize(routes: ReadonlyArray<Route<T, A, C>>, parents: readonly string[] = []): void {
     for (const route of routes) {
       const pathParts = [...parents, route.path];
 
@@ -110,10 +120,10 @@ export default class Router<R extends Route> {
 
   async #resolve(
     path: URL | string,
-    routes: readonly R[],
-    parent: R | null,
-    context: Context<R> | null | undefined,
-  ): Promise<Output<R> | null | undefined> {
+    routes: ReadonlyArray<Route<T, A, C>>,
+    parent: Route<T, A, C> | null,
+    context: OptionalParameter<C>,
+  ): Promise<T | null | undefined> {
     const url = new URL(path, this.#baseURL);
 
     for (const route of routes) {
@@ -124,15 +134,15 @@ export default class Router<R extends Route> {
         const next = async () => (route.children ? this.#resolve(path, route.children, route, context) : undefined);
 
         return (
-          (route.action?.({
-            ...context,
+          route.action?.({
+            ...(context as C),
             next,
             params: result.pathname.groups,
             parent,
             route,
             router: this,
             url,
-          }) as ActionResult<Output<R>>) ?? next()
+          }) ?? next()
         );
       }
     }

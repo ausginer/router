@@ -1,11 +1,10 @@
 import { expect, use } from '@esm-bundle/chai';
 import chaiAsPromised from 'chai-as-promised';
-import Router, { RouterError, type Route } from '../src/Router.js';
+import Router, { type EmptyRecord, RouterError } from '../src/Router.js';
 
 use(chaiAsPromised);
 
 type TestContext = Readonly<{ data: string }>;
-type DefaultRoute = Route<string>;
 
 describe('Router', () => {
   const BASE_PATH = location.origin;
@@ -26,7 +25,7 @@ describe('Router', () => {
     });
 
     it('resolves complex path', async () => {
-      const router = new Router<DefaultRoute>([
+      const router = new Router([
         {
           action({ params }) {
             return `Foo--${params.id ?? ''}`;
@@ -51,7 +50,7 @@ describe('Router', () => {
     });
 
     it('resolves nested paths', async () => {
-      const router = new Router<DefaultRoute>({
+      const router = new Router<string>({
         async action({ next }) {
           const result = 'Foo';
           const child = (await next()) ?? '';
@@ -73,7 +72,7 @@ describe('Router', () => {
     });
 
     it('allows preventing the loading of the nested route', async () => {
-      const router = new Router<DefaultRoute>({
+      const router = new Router({
         async action({ next, url }) {
           if (url.searchParams.has('authenticated')) {
             return next();
@@ -100,11 +99,11 @@ describe('Router', () => {
     });
 
     it('allows setting arbitrary data along with the route', async () => {
-      interface ExtendedRoute extends Route<string> {
+      type RouteExtension = Readonly<{
         requiresLogin?: boolean;
-      }
+      }>;
 
-      const router = new Router<ExtendedRoute>({
+      const router = new Router<string, RouteExtension>({
         async action({ route, next }) {
           return `parent: ${String(route.requiresLogin)}, child: ${String(await next())}`;
         },
@@ -135,7 +134,7 @@ describe('Router', () => {
           },
         ],
         path: '/foo',
-      } as DefaultRoute);
+      });
       const result = await router.resolve('/foo/bar');
       expect(result).to.equal('Bar');
     });
@@ -160,7 +159,7 @@ describe('Router', () => {
             },
             path: '/foo',
           },
-        ] as ReadonlyArray<Route<string>>,
+        ],
         { baseURL: 'https://vaadin.com' },
       );
 
@@ -171,22 +170,22 @@ describe('Router', () => {
     });
 
     it('allows specifying custom error handler', async () => {
-      const router = new Router(
+      const router = new Router<string, EmptyRecord, TestContext>(
         {
           action() {
             return 'Foo';
           },
           path: '/foo',
-        } as Route<string, TestContext>,
+        },
         {
           errorHandler(_, error, context) {
-            return `[${error.status}]: ${error.message}.\n\n${context?.data ?? ''}`;
+            return `${error.status}: ${error.message}.\n\n${context.data}`;
           },
         },
       );
 
       const result = await router.resolve('/bar', { data: 'FOO' });
-      expect(result).to.equal(`[404]: Page ${new URL('/bar', BASE_PATH).toString()} is not found.\n\nFOO`);
+      expect(result).to.equal(`404: ${new URL('/bar', BASE_PATH).toString()}.\n\nFOO`);
     });
 
     it('allows using hash instead of the full URL', async () => {
@@ -198,7 +197,7 @@ describe('Router', () => {
             },
             path: '/foo',
           },
-        ] as ReadonlyArray<Route<string>>,
+        ],
         { hash: true },
       );
 
@@ -209,12 +208,14 @@ describe('Router', () => {
 
   describe('Router#resolve', () => {
     it('allows receiving context in actions', async () => {
-      const router = new Router({
+      type Context = Readonly<{ data: string }>;
+
+      const router = new Router<string, EmptyRecord, Context>({
         action({ data }) {
           return `Foo--${data}`;
         },
         path: '/foo',
-      } as Route<string, TestContext>);
+      });
 
       let actual = await router.resolve('/foo', { data: 'CTX' });
       expect(actual).to.equal('Foo--CTX');
