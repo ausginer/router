@@ -1,5 +1,5 @@
-import { readdir } from 'fs/promises';
-import { fileURLToPath } from 'url';
+import { readdir } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 
 const root = new URL('../', import.meta.url);
@@ -12,5 +12,4 @@ await build({
   sourcemap: 'linked',
   sourcesContent: true,
   tsconfig: fileURLToPath(new URL('./tsconfig.build.json', root)),
-  write: true,
 });
