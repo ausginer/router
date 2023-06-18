@@ -1,15 +1,15 @@
-import { readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
+import { glob } from 'glob';
 
 const root = new URL('../', import.meta.url);
-const src = new URL('./src/', root);
 
 await build({
-  entryPoints: (await readdir(src)).map((file) => new URL(file, src)).map(fileURLToPath),
+  entryPoints: await glob(['src/**/*.ts'], { cwd: root }),
   minify: true,
   outdir: fileURLToPath(root),
   sourcemap: 'linked',
   sourcesContent: true,
+  target: 'es2022',
   tsconfig: fileURLToPath(new URL('./tsconfig.build.json', root)),
 });

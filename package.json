@@ -53,20 +53,23 @@
   },
   "devDependencies": {
     "@esm-bundle/chai": "^4.3.4-fix.0",
+    "@microsoft/api-documenter": "^7.22.20",
+    "@microsoft/api-extractor": "^7.35.4",
     "@size-limit/esbuild-why": "^8.2.4",
     "@size-limit/preset-small-lib": "^8.2.4",
     "@types/chai-as-promised": "^7.1.5",
-    "@types/karma": "^6.3.3",
+    "@types/karma": "^6.3.4",
     "@types/mocha": "^10.0.1",
-    "@types/node": "^18.16.2",
-    "@types/sinon": "^10.0.14",
+    "@types/node": "^20.3.1",
+    "@types/sinon": "^10.0.15",
     "@types/sinon-chai": "^3.2.9",
     "chai-as-promised": "^7.1.1",
     "chai-dom": "^1.11.0",
-    "concurrently": "^8.1.0",
-    "esbuild": "^0.17.19",
-    "eslint": "^8.39.0",
+    "concurrently": "^8.2.0",
+    "esbuild": "^0.18.4",
+    "eslint": "^8.43.0",
     "eslint-config-vaadin": "^1.0.0-alpha.12",
+    "glob": "^10.2.7",
     "karma": "^6.4.2",
     "karma-chrome-launcher": "^3.2.0",
     "karma-coverage": "^2.2.0",
@@ -79,17 +82,16 @@
     "micromatch": "^4.0.5",
     "mocha": "^10.2.0",
     "prettier": "^2.8.8",
-    "rollup": "^3.24.0",
     "simple-git-hooks": "^2.8.1",
-    "sinon": "^15.0.4",
+    "sinon": "^15.1.2",
     "sinon-chai": "^3.7.0",
     "size-limit": "^8.2.4",
     "tsx": "^3.12.7",
-    "typescript": "^5.0.4",
-    "vite": "^4.3.3"
+    "typescript": "^5.1.3",
+    "vite": "^4.3.9"
   },
   "dependencies": {
-    "urlpattern-polyfill": "^8.0.2"
+    "urlpattern-polyfill": "^9.0.0"
   },
   "size-limit": [
     {
