@@ -5,7 +5,7 @@ import { glob } from 'glob';
 const root = new URL('../', import.meta.url);
 
 await build({
-  entryPoints: await glob(['src/**/*.ts'], { cwd: root }),
+  entryPoints: await glob(['src/**/*.ts'], { cwd: root, ignore: ['**/*.d.ts'] }),
   minify: true,
   outdir: fileURLToPath(root),
   sourcemap: 'linked',
