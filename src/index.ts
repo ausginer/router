@@ -4,3 +4,4 @@ if (!('URLPattern' in globalThis)) {
 
 export * from './navigation.js';
 export * from './Router.js';
+export type { EmptyRecord } from './types.js';

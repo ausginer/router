@@ -1,6 +1,7 @@
 import { expect, use } from '@esm-bundle/chai';
 import chaiAsPromised from 'chai-as-promised';
-import Router, { type EmptyRecord, RouterError } from '../src/Router.js';
+import { Router, RouterError } from '../src/Router.js';
+import type { EmptyRecord } from '../src/types.js';
 
 use(chaiAsPromised);
 
@@ -52,9 +53,7 @@ describe('Router', () => {
     it('resolves nested paths', async () => {
       const router = new Router<string>({
         async action({ next }) {
-          const result = 'Foo';
-          const child = (await next()) ?? '';
-          return `${result}--${child}--Baz`;
+          return `Foo--${(await next()) ?? ''}--Baz`;
         },
         children: [
           {
@@ -72,7 +71,7 @@ describe('Router', () => {
     });
 
     it('allows preventing the loading of the nested route', async () => {
-      const router = new Router({
+      const router = new Router<string>({
         async action({ next, url }) {
           if (url.searchParams.has('authenticated')) {
             return next();
@@ -105,12 +104,15 @@ describe('Router', () => {
 
       const router = new Router<string, RouteExtension>({
         async action({ route, next }) {
-          return `parent: ${String(route.requiresLogin)}, child: ${String(await next())}`;
+          return `Foo-${String(await next())}|${JSON.stringify({
+            child: String(route.requiresLogin),
+            parent: this.requiresLogin,
+          })}`;
         },
         children: [
           {
             action({ route }) {
-              return String(route.requiresLogin);
+              return 'Bar';
             },
             path: '/protected',
           },
@@ -120,7 +122,7 @@ describe('Router', () => {
       });
 
       const result = await router.resolve('/protected');
-      expect(result).to.equal('parent: true, child: undefined');
+      expect(result).to.equal('Foo-Bar|{"child":"undefined","parent":true}');
     });
 
     it('allows omitting "action" for the parent route', async () => {
@@ -169,24 +171,46 @@ describe('Router', () => {
       expect(actual).to.equal('Foo--https://vaadin.com/foo');
     });
 
-    it('allows specifying custom error handler', async () => {
-      const router = new Router<string, EmptyRecord, TestContext>(
-        {
-          action() {
-            return 'Foo';
-          },
-          path: '/foo',
+    it('throws an error if the path cannot be associated', async () => {
+      const router = new Router<string, EmptyRecord>({
+        action() {
+          return 'Foo';
         },
-        {
-          errorHandler(_, error, context) {
-            return `${error.status}: ${error.message}.\n\n${context.data}`;
-          },
-        },
-      );
+        path: '/foo',
+      });
 
-      const result = await router.resolve('/bar', { data: 'FOO' });
-      expect(result).to.equal(`404: ${new URL('/bar', BASE_PATH).toString()}.\n\nFOO`);
+      await expect(router.resolve('/bar')).to.rejectedWith(RouterError);
     });
+
+    it('it does not throw an error if there is a catching route', async () => {
+      const router = new Router<string>([
+        {
+          async action({ next }) {
+            return `Root--${String(await next())}`;
+          },
+          children: [
+            {
+              async action() {
+                return 'Foo';
+              },
+              path: '/foo',
+            },
+          ],
+          path: '',
+        },
+        {
+          async action() {
+            return '404';
+          },
+          path: '*',
+        },
+      ]);
+
+      const result = await router.resolve('/bar');
+      expect(result).to.equal('404');
+    });
+
+    it('allows setting a custom error handler', () => {});
 
     it('allows using hash instead of the full URL', async () => {
       const router = new Router(

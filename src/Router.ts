@@ -1,37 +1,37 @@
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference,spaced-comment
 /// <reference types="urlpattern-polyfill" />
-export type ActionResult<T> = Promise<T | null | undefined> | T | null | undefined;
+import type { EmptyRecord, Optional } from './types.js';
 
-export type EmptyRecord = Record<never, never>;
+export type ActionResult<T> = Promise<T | null | undefined> | T | null | undefined;
 
 export type Route<
   T = unknown,
-  A extends Record<string, unknown> = EmptyRecord,
+  X extends Record<string, unknown> = EmptyRecord,
   C extends Record<string, unknown> = EmptyRecord,
-> = A &
-  Readonly<{
-    readonly children?: ReadonlyArray<Route<T, A, C>> | null;
-    readonly path: string;
-    action?(context: RouteContext<T, A, C>): ActionResult<T>;
-  }>;
+> = Readonly<{
+  readonly children?: ReadonlyArray<Route<T, X, C>> | null;
+  readonly path: string;
+  action?(this: Route<T, X, C>, context: RouteContext<T, X, C>): ActionResult<T>;
+}> &
+  X;
 
 export type RouteContext<
   T = unknown,
-  A extends Record<string, unknown> = EmptyRecord,
+  X extends Record<string, unknown> = EmptyRecord,
   C extends Record<string, unknown> = EmptyRecord,
 > = C &
   Readonly<{
     params: Readonly<Record<string, string | undefined>>;
-    parent: Route<T, A, C> | null;
-    route: Route<T, A, C>;
-    router: Router<T, A, C>;
+    parents: ReadonlyArray<Route<T, X, C>>;
+    route: Route<T, X, C>;
+    router: Router<T, X, C>;
     url: URL;
     next(): Promise<T | null | undefined>;
   }>;
 
 export type RouterErrorHandler<T = unknown, C extends Record<string, unknown> = EmptyRecord> = (
   path: URL,
-  error: RouterError,
+  error: unknown,
   context: C,
 ) => ActionResult<T>;
 
@@ -50,103 +50,89 @@ export class RouterError extends Error {
   }
 }
 
-type CopyableURLPatternProperties = keyof Omit<URLPattern, 'exec' | 'test'>;
-// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-type OptionalParameter<T extends Record<string, unknown>> = keyof T extends never ? void : T;
-
-export default class Router<
+export class Router<
   T = unknown,
-  A extends Record<string, unknown> = EmptyRecord,
+  X extends Record<string, unknown> = EmptyRecord,
   C extends Record<string, unknown> = EmptyRecord,
 > {
-  readonly #routes: ReadonlyArray<Route<T, A, C>>;
-  readonly #patterns = new WeakMap<Route<T, A, C>, URLPattern>();
-  readonly #options?: RouterOptions<T, C>;
+  readonly #routes: ReadonlyArray<Route<T, X, C>>;
+  readonly #patterns = new Map<URLPattern, ReadonlyArray<Route<T, X, C>>>();
+  readonly #options: RouterOptions<T, C>;
   readonly #baseURL: string;
 
-  constructor(routes: ReadonlyArray<Route<T, A, C>> | Route<T, A, C>, options?: RouterOptions<T, C>) {
+  constructor(routes: ReadonlyArray<Route<T, X, C>> | Route<T, X, C>, options: RouterOptions<T, C> = {}) {
     this.#routes = Array.isArray(routes) ? routes : [routes];
     this.#options = options;
-    this.#baseURL = String(this.#options?.baseURL ?? location.origin);
-    this.#patternize(this.#routes);
+    this.#baseURL = String(this.#options.baseURL ?? location.origin);
+
+    for (const chain of this.#traverse(this.#routes)) {
+      const route = chain.at(-1)!;
+
+      if (!route.children?.length) {
+        this.#patterns.set(
+          new URLPattern(
+            `${this.#baseURL}/${this.#options.hash ? '#/' : ''}${chain
+              .map((r) => r.path.replace(/^\/*(.*)\/*/u, '$1'))
+              .filter(Boolean)
+              .join('/')}${this.#options.hash ? '' : '\\?*#*'}`,
+          ),
+          chain,
+        );
+      }
+    }
   }
 
-  get routes(): ReadonlyArray<Route<T, A, C>> {
+  get routes(): ReadonlyArray<Route<T, X, C>> {
     return this.#routes;
   }
 
-  get options(): RouterOptions<T, C> | undefined {
+  get options(): RouterOptions<T, C> {
     return this.#options;
   }
 
-  async resolve(path: URL | string, context: OptionalParameter<C>): Promise<T | null | undefined> {
-    try {
-      return await this.#resolve(path, this.#routes, null, context);
-    } catch (e: unknown) {
-      if (e instanceof RouterError && this.#options?.errorHandler) {
-        return this.#options.errorHandler(new URL(path, this.#baseURL), e, context as C);
-      }
-
-      throw e;
-    }
-  }
-
-  #patternize(routes: ReadonlyArray<Route<T, A, C>>, parents: readonly string[] = []): void {
-    for (const route of routes) {
-      const pathParts = [...parents, route.path];
-
-      if (route.children?.length) {
-        this.#patternize(route.children, pathParts);
-        pathParts.push('*');
-      }
-
-      const pattern = new URLPattern(
-        `${this.#baseURL}/${this.#options?.hash ? '#/' : ''}${pathParts
-          .map((p) => p.replace(/^\/*(.*)\/*/u, '$1'))
-          .filter(Boolean)
-          .join('/')}`,
-      );
-      const init: URLPatternInit = {};
-
-      // eslint-disable-next-line no-restricted-syntax
-      for (const propertyName in pattern)
-        init[propertyName as CopyableURLPatternProperties] = pattern[propertyName as CopyableURLPatternProperties]
-          ? pattern[propertyName as CopyableURLPatternProperties]
-          : '*';
-
-      this.#patterns.set(route, new URLPattern(init));
-    }
-  }
-
-  async #resolve(
-    path: URL | string,
-    routes: ReadonlyArray<Route<T, A, C>>,
-    parent: Route<T, A, C> | null,
-    context: OptionalParameter<C>,
-  ): Promise<T | null | undefined> {
+  async resolve(path: URL | string, context: Optional<C>): Promise<T | null | undefined> {
     const url = new URL(path, this.#baseURL);
 
-    for (const route of routes) {
-      // There cannot be a router without appropriate pattern, so we can safely suppress null
-      const result = this.#patterns.get(route)!.exec(url);
+    for (const [pattern, chain] of this.#patterns) {
+      const result = pattern.exec(url);
 
       if (result) {
-        const next = async () => (route.children ? this.#resolve(path, route.children, route, context) : undefined);
+        const iter = chain.values();
+        const next = async (): Promise<T | null | undefined> => {
+          const { done, value } = iter.next();
 
-        return (
-          route.action?.({
-            ...(context as C),
-            next,
-            params: result.pathname.groups,
-            parent,
-            route,
-            router: this,
-            url,
-          }) ?? next()
-        );
+          return done
+            ? undefined
+            : value.action?.({
+                ...(context as C),
+                next,
+                params: result.pathname.groups,
+                parents: chain,
+                route: chain.at(-1)!,
+                router: this,
+                url,
+              }) ?? next();
+        };
+
+        return next();
       }
     }
 
     throw new RouterError(404, url);
+  }
+
+  *#traverse(
+    routes: ReadonlyArray<Route<T, X, C>>,
+    parents: ReadonlyArray<Route<T, X, C>> = [],
+  ): Generator<ReadonlyArray<Route<T, X, C>>, void, void> {
+    for (const route of routes) {
+      const chain = [...parents, route];
+
+      yield chain;
+
+      if (route.children) {
+        yield* this.#traverse(route.children, chain);
+      }
+    }
   }
 }
