@@ -2,14 +2,10 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": ["./tsconfig.json"],
   "compilerOptions": {
-    "alwaysStrict": false,
-    "declaration": true,
-    "declarationMap": true,
     "isolatedModules": true,
-    "outDir": ".temp",
+    "outDir": ".",
     "sourceMap": true,
-    "inlineSources": true,
-    "noEmit": false
+    "inlineSources": true
   },
   "include": ["src/**/*"]
 }

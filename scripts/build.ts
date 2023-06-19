@@ -1,13 +1,15 @@
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
-import { glob } from 'glob';
 
 const root = new URL('../', import.meta.url);
 
 await build({
-  entryPoints: await glob(['src/**/*.ts'], { cwd: root, ignore: ['**/*.d.ts'] }),
+  bundle: true,
+  entryPoints: [fileURLToPath(new URL('./src/index.ts', root))],
+  format: 'esm',
   minify: true,
   outdir: fileURLToPath(root),
+  packages: 'external',
   sourcemap: 'linked',
   sourcesContent: true,
   target: 'es2022',

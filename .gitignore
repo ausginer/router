@@ -1,6 +1,7 @@
 .idea
 .vscode
 .coverage
+.temp
 node_modules
 /*.d.ts
 /*.d.ts.map

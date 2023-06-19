@@ -6,10 +6,11 @@
   "type": "module",
   "scripts": {
     "clean": "git clean -Xf . -e !.idea -e !.idea/**/* -e !.vscode -e !.vscode/**/* -e !node_modules -e !node_modules/**/*",
-    "build": "concurrently npm:build:*",
+    "build": "concurrently npm:build:* && npm run finalize:api",
     "build:code": "tsx scripts/build.ts",
     "build:declaration": "tsc -p tsconfig.build.json --emitDeclarationOnly",
     "build:copy-dts": "tsx scripts/copy-dts.ts",
+    "finalize:api": "api-extractor run --local --verbose",
     "test": "karma start karma.config.cjs",
     "test:watch": "npm run test -- --watch",
     "test:cover": "npm run test -- --coverage",
