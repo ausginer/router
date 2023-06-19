@@ -90,7 +90,8 @@ export class Router<
     return this.#options;
   }
 
-  async resolve(path: URL | string, context: Optional<C>): Promise<T | null | undefined> {
+  async resolve(path: URL | string, ...context: Optional<C>): Promise<T | null | undefined>;
+  async resolve(path: URL | string, context?: C): Promise<T | null | undefined> {
     const url = new URL(path, this.#baseURL);
 
     for (const [pattern, chain] of this.#patterns) {
@@ -104,7 +105,7 @@ export class Router<
           return done
             ? undefined
             : value.action?.({
-                ...(context as C),
+                ...context!,
                 next,
                 params: result.pathname.groups,
                 parents: chain,
