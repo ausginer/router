@@ -7,5 +7,5 @@
     "sourceMap": true,
     "inlineSources": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "test/**/*"]
 }

@@ -5,8 +5,6 @@ import type { EmptyRecord } from '../src/types.js';
 
 use(chaiAsPromised);
 
-type TestContext = Readonly<{ data: string }>;
-
 describe('Router', () => {
   const BASE_PATH = location.origin;
 

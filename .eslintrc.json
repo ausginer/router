@@ -5,5 +5,12 @@
     "vaadin/lit",
     "vaadin/prettier",
     "vaadin/testing"
-  ]
+  ],
+  "plugins": [
+    "eslint-plugin-tsdoc"
+  ],
+  "rules": {
+    "@typescript-eslint/promise-function-async": "off",
+    "tsdoc/syntax": "error"
+  }
 }

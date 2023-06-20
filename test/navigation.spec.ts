@@ -38,7 +38,7 @@ describe('Navigation', () => {
 
     it('propagates the navigation context via event', (done) => {
       const url = new URL('/foo', BASE_PATH);
-      const ctx = {};
+      const ctx = { foo: 'bar' };
       addEventListener(
         'popstate',
         ({ state: { context } }) => {

@@ -10,6 +10,11 @@ type HistoryState<C extends Record<string, unknown> = EmptyRecord> = Readonly<{
   path: URL | string;
 }>;
 
+/**
+ *
+ * @param path -
+ * @param context - A context object
+ */
 export function navigate<C extends Record<string, unknown> = EmptyRecord>(
   path: URL | string,
   ...context: Optional<C>
