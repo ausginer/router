@@ -13,11 +13,16 @@ import type { EmptyRecord, Optional } from './types.js';
 export type ActionResult<T> = Promise<T | null | undefined> | T | null | undefined;
 
 /**
- * Describes a route object.
+ * Describes a single route.
+ *
+ * The route is a description of a single or multiple sections in the URL. It
+ * sets up a behavior of a page as a reaction to the URL update. The route could
+ * work either as a producer of a page content or as a middleware for the
+ * children routes.
  *
  * @typeParam T - a value for an {@link Route.action} to return.
  * @typeParam R - an extension for the Route type to provide specific data.
- * @typeParam C - an extension for the {@link RouteContext} type to provide
+ * @typeParam C - an extension for the {@link RouterContext} type to provide
  * specific data.
  *
  * @public
@@ -35,9 +40,10 @@ export type Route<
     readonly children?: ReadonlyArray<Route<T, R, C>> | null;
 
     /**
-     * Represents URL section of the current route. During the construction of the
-     * final URL, it will be added next to the path of the parent route or to the
-     * {@link RouterOptions.baseURL | baseURL} if there is no parent route.
+     * Represents a URL section of the current route. During the construction
+     * of the final URL, it will be added next to the path of the parent route
+     * or to the {@link RouterOptions.baseURL | baseURL} if there is no parent
+     * route.
      *
      * @remarks
      *
@@ -45,44 +51,112 @@ export type Route<
      * capabilities related to `pathname`, like including RegExp instructions into
      * the URL section. However, do not include hash (`#`) and search (`?`) parts,
      * use route action instead.
+     *
+     * @example
+     * ```ts
+     * const router = new Router({
+     *   path: '/foo/:bar',
+     *   children: [{
+     *     path: '/id/:id(\\d+)'
+     *   }]
+     * });
+     * ```
+     * The code above matches the following URL:
+     * ```
+     * /foo/some-random-text/id/100
+     * ```
      */
     readonly path: string;
 
     /**
-     * Executed each time the route is resolved. It is capable of everything you
-     * want: it can render a page or a part of the page, check user permissions,
-     * or redirect a user to any other page.
+     * Executed each time the route is resolved.
      *
-     * @param context - A {@link RouteContext} object.
+     * The action is a core part of the route concept. Actions are executed from
+     * the root route to the child one recursively, and are able to either
+     * produce the content or execute something before or after the child
+     * action.
+     *
+     * If the action is not defined, resolution algorithm will simply return
+     * the result of the child route's action.
+     *
+     * @param context - A {@link RouterContext} object.
      *
      * @returns A result that will be delivered to the {@link Router.resolve}
      * method.
+     *
+     * @example
+     * ```ts
+     * const router = new Router<string>({
+     *   async action({ next }) {
+     *     console.log('before');
+     *     await next();
+     *     console.log('after');
+     *   },
+     *   path: '/foo',
+     *   children: [{
+     *     action() {
+     *       console.log('child');
+     *       return 'content';
+     *     },
+     *     path: '/bar'
+     *   }]
+     * });
+     *
+     * router.resolve('/foo/bar');
+     * ```
+     * This code will print:
+     * ```
+     * before
+     * child
+     * after
+     * ```
      */
-    action?(this: Route<T, R, C>, context: RouteContext<T, R, C>): ActionResult<T>;
+    action?(this: Route<T, R, C>, context: RouterContext<T, R, C>): ActionResult<T>;
   }>;
 
 /**
- * Describes a route context object. It contains all the local data that could
- * be helpful to resolve route correctly.
+ * Describes a context of the router specific for each resolution.
  *
  * @public
  * @interface
  */
-export type RouteContext<
+export type RouterContext<
   T = unknown,
   R extends Record<string, unknown> = EmptyRecord,
   C extends Record<string, unknown> = EmptyRecord,
 > = C &
   Readonly<{
-    params: Readonly<Record<string, string | undefined>>;
+    /**
+     * A collection of URL {@link https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API#fixed_text_and_capture_groups | capture groups}.
+     */
+    groups: Readonly<Record<string, string | undefined>>;
+    /**
+     * A sequence of the route's parents resolved from root to leaf. The first
+     * one is the root route, the last one is the final leaf route.
+     */
     parents: ReadonlyArray<Route<T, R, C>>;
+    /**
+     * The final route in the resolution chain.
+     */
     route: Route<T, R, C>;
+    /**
+     * The router instance.
+     */
     router: Router<T, R, C>;
+    /**
+     * The URL being resolved.
+     */
     url: URL;
+    /**
+     * The method that will execute an action of the next (child) route in the
+     * resolution chain.
+     */
     next(): Promise<T | null | undefined>;
   }>;
 
 /**
+ * An error handler function signature.
+ *
  * @public
  */
 export type RouterErrorHandler<T = unknown, C extends Record<string, unknown> = EmptyRecord> = (
@@ -118,7 +192,7 @@ export class RouterError extends Error {
  *
  * @typeParam T - a value for an {@link Route.action | action} to return.
  * @typeParam R - an extension for the Route type to provide specific data.
- * @typeParam C - an extension for the {@link RouteContext} type to provide
+ * @typeParam C - an extension for the {@link RouterContext} type to provide
  * specific data.
  *
  * @public available since version 1.0.0.
@@ -185,8 +259,8 @@ export class Router<
             ? undefined
             : value.action?.({
                 ...context!,
+                groups: result.pathname.groups,
                 next,
-                params: result.pathname.groups,
                 parents: chain,
                 route: chain.at(-1)!,
                 router: this,

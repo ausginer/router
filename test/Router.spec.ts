@@ -26,14 +26,14 @@ describe('Router', () => {
     it('resolves complex path', async () => {
       const router = new Router([
         {
-          action({ params }) {
-            return `Foo--${params.id ?? ''}`;
+          action({ groups }) {
+            return `Foo--${groups.id ?? ''}`;
           },
           path: '/foo/:id',
         },
         {
-          action({ params }) {
-            return `Bar--${params.id ?? ''}`;
+          action({ groups }) {
+            return `Bar--${groups.id ?? ''}`;
           },
           path: '/bar/:id(\\d+)',
         },
