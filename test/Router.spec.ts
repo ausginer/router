@@ -1,5 +1,6 @@
 import { expect, use } from '@esm-bundle/chai';
 import chaiAsPromised from 'chai-as-promised';
+import sinon from 'sinon';
 import { Router, RouterError } from '../src/Router.js';
 import type { EmptyRecord } from '../src/types.js';
 
@@ -26,14 +27,26 @@ describe('Router', () => {
     it('resolves complex path', async () => {
       const router = new Router([
         {
-          action({ groups }) {
-            return `Foo--${groups.id ?? ''}`;
+          action({
+            result: {
+              pathname: {
+                groups: { id },
+              },
+            },
+          }) {
+            return `Foo--${id ?? ''}`;
           },
           path: '/foo/:id',
         },
         {
-          action({ groups }) {
-            return `Bar--${groups.id ?? ''}`;
+          action({
+            result: {
+              pathname: {
+                groups: { id },
+              },
+            },
+          }) {
+            return `Bar--${id ?? ''}`;
           },
           path: '/bar/:id(\\d+)',
         },
@@ -101,7 +114,7 @@ describe('Router', () => {
       }>;
 
       const router = new Router<string, RouteExtension>({
-        async action({ route, next }) {
+        async action({ branch: [route], next }) {
           return `Foo-${String(await next())}|${JSON.stringify({
             child: String(route.requiresLogin),
             parent: this.requiresLogin,
@@ -109,7 +122,7 @@ describe('Router', () => {
         },
         children: [
           {
-            action({ route }) {
+            action() {
               return 'Bar';
             },
             path: '/protected',
@@ -208,7 +221,39 @@ describe('Router', () => {
       expect(result).to.equal('404');
     });
 
-    it('allows setting a custom error handler', () => {});
+    it('allows setting a custom error handler', async () => {
+      type Context = { data: string };
+      class CustomError extends Error {}
+
+      const errorHandler = sinon.spy();
+
+      const router = new Router<string, EmptyRecord, Context>(
+        {
+          children: [
+            {
+              action() {
+                throw new CustomError();
+              },
+              path: '/bar',
+            },
+          ],
+          path: '/foo',
+        },
+        {
+          errorHandler,
+        },
+      );
+
+      await router.resolve('/foo/bar', { data: 'foo' });
+
+      expect(errorHandler).to.be.calledOnce;
+
+      const [context] = errorHandler.firstCall.args;
+      expect(context).to.be.an('object');
+      expect(context).to.have.keys(['branch', 'data', 'error', 'next', 'result', 'router', 'url']);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      expect(context.error).to.be.instanceOf(CustomError);
+    });
 
     it('allows using hash instead of the full URL', async () => {
       const router = new Router(

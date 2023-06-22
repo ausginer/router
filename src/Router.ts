@@ -127,18 +127,17 @@ export type RouterContext<
 > = C &
   Readonly<{
     /**
-     * A collection of URL {@link https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API#fixed_text_and_capture_groups | capture groups}.
+     * A sequence of routes connecting the root route to the resolved leaf
+     * route. For convenience, it starts with the leaf route and ends with
+     * the root route.
      */
-    groups: Readonly<Record<string, string | undefined>>;
+    branch: ReadonlyArray<Route<T, R, C>>;
     /**
-     * A sequence of the route's parents resolved from root to leaf. The first
-     * one is the root route, the last one is the final leaf route.
+     * A result of the current resolution. It is an object returned by
+     * {@link https://developer.mozilla.org/en-US/docs/Web/API/URLPattern/exec | URLPattern#exec }
+     * method.
      */
-    parents: ReadonlyArray<Route<T, R, C>>;
-    /**
-     * The final route in the resolution chain.
-     */
-    route: Route<T, R, C>;
+    result: URLPatternResult;
     /**
      * The router instance.
      */
@@ -148,7 +147,7 @@ export type RouterContext<
      */
     url: URL;
     /**
-     * The method that will execute an action of the next (child) route in the
+     * The method that will execute an action of the next route in the
      * resolution chain.
      */
     next(): Promise<T | null | undefined>;
@@ -157,22 +156,40 @@ export type RouterContext<
 /**
  * An error handler function signature.
  *
+ * @typeParam T - a value for an {@link Route.action} to return.
+ * @typeParam R - an extension for the Route type to provide specific data.
+ * @typeParam C - an extension for the {@link RouterContext} type to provide
+ * specific data.
+ *
+ * @returns A result that will be delivered to the {@link Router.resolve}
+ * method. In this case, the error handler is just another specific
+ * {@link Route.action}.
+ *
  * @public
  */
-export type RouterErrorHandler<T = unknown, C extends Record<string, unknown> = EmptyRecord> = (
-  path: URL,
-  error: unknown,
-  context: C,
+export type RouterErrorHandler<
+  T = unknown,
+  R extends Record<string, unknown> = EmptyRecord,
+  C extends Record<string, unknown> = EmptyRecord,
+> = (
+  context: Readonly<{
+    error: unknown;
+  }> &
+    RouterContext<T, R, C>,
 ) => ActionResult<T>;
 
 /**
  * @public
  * @interface
  */
-export type RouterOptions<T = unknown, C extends Record<string, unknown> = EmptyRecord> = Readonly<{
+export type RouterOptions<
+  T = unknown,
+  R extends Record<string, unknown> = EmptyRecord,
+  C extends Record<string, unknown> = EmptyRecord,
+> = Readonly<{
   baseURL?: URL | string;
   hash?: boolean;
-  errorHandler?: RouterErrorHandler<T, C>;
+  errorHandler?: RouterErrorHandler<T, R, C>;
 }>;
 
 /**
@@ -204,27 +221,27 @@ export class Router<
 > {
   readonly #routes: ReadonlyArray<Route<T, R, C>>;
   readonly #patterns = new Map<URLPattern, ReadonlyArray<Route<T, R, C>>>();
-  readonly #options: RouterOptions<T, C>;
+  readonly #options: RouterOptions<T, R, C>;
   readonly #baseURL: string;
 
-  constructor(routes: ReadonlyArray<Route<T, R, C>> | Route<T, R, C>, options: RouterOptions<T, C> = {}) {
+  constructor(routes: ReadonlyArray<Route<T, R, C>> | Route<T, R, C>, options: RouterOptions<T, R, C> = {}) {
     this.#routes = Array.isArray(routes) ? routes : [routes];
     this.#options = options;
     this.#baseURL = String(this.#options.baseURL ?? location.origin);
 
-    for (const chain of this.#traverse(this.#routes)) {
-      const route = chain.at(-1)!;
+    for (const branch of this.#traverse(this.#routes)) {
+      const route = branch.at(-1)!;
 
       if (!route.children?.length) {
         this.#patterns.set(
           new URLPattern(
-            `${this.#options.hash ? '#/' : ''}${chain
-              .map((r) => r.path.replace(/^\/*(.*)\/*/u, '$1'))
+            `${this.#options.hash ? '#/' : ''}${branch
+              .map((r) => r.path.replace(/^\/*(.*)\/*$/u, '$1'))
               .filter(Boolean)
               .join('/')}${this.#options.hash ? '' : '\\?*#*'}`,
             this.#baseURL,
           ),
-          chain,
+          branch,
         );
       }
     }
@@ -234,7 +251,7 @@ export class Router<
     return this.#routes;
   }
 
-  get options(): RouterOptions<T, C> {
+  get options(): RouterOptions<T, R, C> {
     return this.#options;
   }
 
@@ -243,29 +260,46 @@ export class Router<
    * @param path -
    * @param context -
    */
-  resolve(path: URL | string, ...context: Optional<C>): Promise<T | null | undefined>;
-  resolve(path: URL | string, context?: C): Promise<T | null | undefined> {
+  async resolve(path: URL | string, ...context: Optional<C>): Promise<T | null | undefined>;
+  async resolve(path: URL | string, context?: C): Promise<T | null | undefined> {
     const url = new URL(path, this.#baseURL);
 
-    for (const [pattern, chain] of this.#patterns) {
+    for (const [pattern, branch] of this.#patterns) {
       const result = pattern.exec(url);
 
       if (result) {
-        const iter = chain.values();
+        const reversedBranch = branch.slice().reverse();
+        const iter = branch.values();
+
         const next = async (): Promise<T | null | undefined> => {
           const { done, value } = iter.next();
 
-          return done
-            ? undefined
-            : value.action?.({
-                ...context!,
-                groups: result.pathname.groups,
-                next,
-                parents: chain,
-                route: chain.at(-1)!,
-                router: this,
-                url,
-              }) ?? next();
+          if (done) {
+            return undefined;
+          }
+
+          if (!value.action) {
+            return next();
+          }
+
+          const routeCtx = {
+            ...context!,
+            branch: reversedBranch,
+            next,
+            result,
+            router: this,
+            url,
+          };
+
+          try {
+            return await value.action(routeCtx);
+          } catch (e: unknown) {
+            if (this.#options.errorHandler) {
+              return this.#options.errorHandler({ ...routeCtx, error: e });
+            }
+
+            throw e;
+          }
         };
 
         return next();
