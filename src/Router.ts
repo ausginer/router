@@ -132,20 +132,24 @@ export type RouterContext<
      * the root route.
      */
     branch: ReadonlyArray<Route<T, R, C>>;
+
     /**
      * A result of the current resolution. It is an object returned by
      * {@link https://developer.mozilla.org/en-US/docs/Web/API/URLPattern/exec | URLPattern#exec }
      * method.
      */
     result: URLPatternResult;
+
     /**
      * The router instance.
      */
     router: Router<T, R, C>;
+
     /**
      * The URL being resolved.
      */
     url: URL;
+
     /**
      * The method that will execute an action of the next route in the
      * resolution chain.
@@ -154,31 +158,13 @@ export type RouterContext<
   }>;
 
 /**
- * An error handler function signature.
+ * Describes a set of options to tune the router.
  *
  * @typeParam T - a value for an {@link Route.action} to return.
  * @typeParam R - an extension for the Route type to provide specific data.
  * @typeParam C - an extension for the {@link RouterContext} type to provide
  * specific data.
  *
- * @returns A result that will be delivered to the {@link Router.resolve}
- * method. In this case, the error handler is just another specific
- * {@link Route.action}.
- *
- * @public
- */
-export type RouterErrorHandler<
-  T = unknown,
-  R extends Record<string, unknown> = EmptyRecord,
-  C extends Record<string, unknown> = EmptyRecord,
-> = (
-  context: Readonly<{
-    error: unknown;
-  }> &
-    RouterContext<T, R, C>,
-) => ActionResult<T>;
-
-/**
  * @public
  * @interface
  */
@@ -187,20 +173,74 @@ export type RouterOptions<
   R extends Record<string, unknown> = EmptyRecord,
   C extends Record<string, unknown> = EmptyRecord,
 > = Readonly<{
+  /**
+   * A base URL that all the routes will be resolved against. Designed for
+   * applications that are hosted on URLs like the following:
+   *
+   * ```
+   * https://example.com/path/to/my/root
+   * ```
+   */
   baseURL?: URL | string;
+
+  /**
+   * Allows using the old-style hash routing. With this option enabled, all URLs
+   * will be resolved like the following:
+   *
+   * ```
+   * https://example.com/#/foo/bar
+   *                      ^ resolved route URL
+   * ```
+   */
   hash?: boolean;
-  errorHandler?: RouterErrorHandler<T, R, C>;
+
+  /**
+   * Called in case there is an error thrown during the resolution.
+   *
+   * @remarks
+   *
+   * Not called for 404 error.
+   *
+   * @param error - an error thrown during the resolution.
+   * @param context - a context of the current resolution.
+   */
+  errorHandler?(error: unknown, context: RouterContext<T, R, C>): ActionResult<T>;
 }>;
 
 /**
+ * Defines an error thrown if the resolving URL does not match any pattern known
+ * by the router.
+ *
+ * This error cannot be handled by {@link RouterOptions.errorHandler}. To
+ * address this error, you should create a route that consumes all possible
+ * URLs and put it at the end of routes list. Thus, if routes coming first
+ * won't be able to handle this URL, it will be handled by this route and
+ * `NotFoundError` will never be thrown.
+ *
+ * @example
+ * ```ts
+ * const route = new Router<string>([
+ *   {
+ *     path: '/foo',
+ *   },
+ *   {
+ *     action() { console.log('404: Page not found'); }
+ *     path: '*',
+ *   }
+ * ]);
+ *
+ * await route.resolve('/foo/bar');
+ * ```
+ * The example above will print in the console:
+ * ```
+ * 404: Page not found
+ * ```
+ *
  * @public
  */
-export class RouterError extends Error {
-  readonly status: number;
-
-  constructor(status: number, url?: URL, options?: ErrorOptions) {
+export class NotFoundError extends Error {
+  constructor(url?: URL, options?: ErrorOptions) {
     super(url?.toString(), options);
-    this.status = status;
   }
 }
 
@@ -293,12 +333,12 @@ export class Router<
 
           try {
             return await value.action(routeCtx);
-          } catch (e: unknown) {
+          } catch (error: unknown) {
             if (this.#options.errorHandler) {
-              return this.#options.errorHandler({ ...routeCtx, error: e });
+              return this.#options.errorHandler(error, routeCtx);
             }
 
-            throw e;
+            throw error;
           }
         };
 
@@ -306,7 +346,7 @@ export class Router<
       }
     }
 
-    throw new RouterError(404, url);
+    throw new NotFoundError(url);
   }
 
   *#traverse(

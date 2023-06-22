@@ -1,7 +1,7 @@
 import { expect, use } from '@esm-bundle/chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
-import { Router, RouterError } from '../src/Router.js';
+import { Router, NotFoundError } from '../src/Router.js';
 import type { EmptyRecord } from '../src/types.js';
 
 use(chaiAsPromised);
@@ -58,7 +58,7 @@ describe('Router', () => {
       actual = await router.resolve('/bar/124');
       expect(actual).to.equal('Bar--124');
 
-      await expect(router.resolve('/bar/a100')).to.be.rejectedWith(RouterError);
+      await expect(router.resolve('/bar/a100')).to.be.rejectedWith(NotFoundError);
     });
 
     it('allows creating non-middleware page with children', async () => {
@@ -201,7 +201,7 @@ describe('Router', () => {
         { baseURL: 'https://vaadin.com' },
       );
 
-      await expect(router.resolve(new URL('/foo', BASE_PATH))).to.rejectedWith(RouterError);
+      await expect(router.resolve(new URL('/foo', BASE_PATH))).to.rejectedWith(NotFoundError);
 
       const actual = await router.resolve(new URL('/foo', 'https://vaadin.com'));
       expect(actual).to.equal('Foo--https://vaadin.com/foo');
@@ -215,7 +215,7 @@ describe('Router', () => {
         path: '/foo',
       });
 
-      await expect(router.resolve('/bar')).to.rejectedWith(RouterError);
+      await expect(router.resolve('/bar')).to.rejectedWith(NotFoundError);
     });
 
     it('it does not throw an error if there is a catching route', async () => {
@@ -273,11 +273,10 @@ describe('Router', () => {
 
       expect(errorHandler).to.be.calledOnce;
 
-      const [context] = errorHandler.firstCall.args;
+      const [error, context] = errorHandler.firstCall.args;
       expect(context).to.be.an('object');
-      expect(context).to.have.keys(['branch', 'data', 'error', 'next', 'result', 'router', 'url']);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(context.error).to.be.instanceOf(CustomError);
+      expect(context).to.have.keys(['branch', 'data', 'next', 'result', 'router', 'url']);
+      expect(error).to.be.instanceOf(CustomError);
     });
 
     it('allows using hash instead of the full URL', async () => {
