@@ -61,6 +61,31 @@ describe('Router', () => {
       await expect(router.resolve('/bar/a100')).to.be.rejectedWith(RouterError);
     });
 
+    it('allows creating non-middleware page with children', async () => {
+      const router = new Router<string>({
+        children: [
+          {
+            action() {
+              return 'Foo';
+            },
+            path: '',
+          },
+          {
+            action() {
+              return 'Bar';
+            },
+            path: '/bar',
+          },
+        ],
+        path: '/foo',
+      });
+
+      const [result1, result2] = await Promise.all([router.resolve('/foo'), router.resolve('/foo/bar')]);
+
+      expect(result1).to.equal('Foo');
+      expect(result2).to.equal('Bar');
+    });
+
     it('resolves nested paths', async () => {
       const router = new Router<string>({
         async action({ next }) {
