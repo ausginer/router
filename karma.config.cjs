@@ -35,7 +35,9 @@ module.exports = (config) => {
     customLaunchers: {
       ChromeHeadlessNoSandbox: {
         base: 'ChromeHeadless',
-        flags: ['--no-sandbox', '--disable-setuid-sandbox'],
+        flags: ['--no-sandbox', '--disable-setuid-sandbox', isCI ? undefined : '--disable-dev-shm-usage'].filter(
+          Boolean,
+        ),
       },
     },
 
