@@ -4,6 +4,10 @@
     {
       "tagName": "@interface",
       "syntaxKind": "modifier"
+    },
+    {
+      "tagName": "@event",
+      "syntaxKind": "block"
     }
   ]
 }

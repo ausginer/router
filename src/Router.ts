@@ -1,12 +1,12 @@
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference,spaced-comment
-/// <reference types="urlpattern-polyfill" />
+// / <reference types="urlpattern-polyfill" />
 import type { EmptyRecord, Optional } from './types.js';
 
 /**
- * Describes a result of the {@link Route.action}. Could be either a
+ * Describes the result of the {@link Route.action}. It can be either a
  * `Promise` or a plain value.
  *
- * @typeParam T - a value for action to return.
+ * @typeParam T - The type of value returned by the action.
  *
  * @public
  */
@@ -15,14 +15,13 @@ export type ActionResult<T> = Promise<T | null | undefined> | T | null | undefin
 /**
  * Describes a single route.
  *
- * The route is a description of a single or multiple sections in the URL. It
- * sets up a behavior of a page as a reaction to the URL update. The route could
- * work either as a producer of a page content or as a middleware for the
- * children routes.
+ * A route represents a single or multiple sections in the URL. It defines the
+ * behavior of a page in response to URL updates. A route can act as a content
+ * producer or as middleware for child routes.
  *
- * @typeParam T - a value for an {@link Route.action} to return.
- * @typeParam R - an extension for the Route type to provide specific data.
- * @typeParam C - an extension for the {@link RouterContext} type to provide
+ * @typeParam T - The type of value returned by the {@link Route.action}.
+ * @typeParam R - An extension for the Route type to provide specific data.
+ * @typeParam C - An extension for the {@link RouterContext} type to provide
  * specific data.
  *
  * @public
@@ -40,17 +39,17 @@ export type Route<
     readonly children?: ReadonlyArray<Route<T, R, C>> | null;
 
     /**
-     * Represents a URL section of the current route. During the construction
-     * of the final URL, it will be added next to the path of the parent route
-     * or to the {@link RouterOptions.baseURL | baseURL} if there is no parent
-     * route.
+     * Represents a section of the URL specific to the current route. When
+     * constructing the final URL, this section will be appended to the parent
+     * route's path or to the {@link RouterOptions.baseURL | baseURL} if there
+     * is no parent route.
      *
      * @remarks
      *
-     * You could use all the {@link https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API | URLPattern}
-     * capabilities related to `pathname`, like including RegExp instructions into
-     * the URL section. However, do not include hash (`#`) and search (`?`) parts,
-     * use route action instead.
+     * You can utilize all capabilities of the {@link https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API | URLPattern}
+     * related to the `pathname`, including incorporating RegExp
+     * instructions into the URL section. However, do not include the hash (`#`)
+     * and search (`?`) parts; use the route action instead.
      *
      * @example
      * ```ts
@@ -69,14 +68,14 @@ export type Route<
     readonly path: string;
 
     /**
-     * Executed each time the route is resolved.
+     * Executes each time the route is resolved.
      *
-     * The action is a core part of the route concept. Actions are executed from
-     * the root route to the child one recursively, and are able to either
-     * produce the content or execute something before or after the child
+     * The action is a fundamental part of the route concept. Actions are
+     * executed recursively from the root route to the child route and can
+     * either produce content or perform actions before or after the child's
      * action.
      *
-     * If the action is not defined, resolution algorithm will simply return
+     * If the action is not defined, the resolution algorithm will simply return
      * the result of the child route's action.
      *
      * @param context - A {@link RouterContext} object.
@@ -104,7 +103,7 @@ export type Route<
      *
      * router.resolve('/foo/bar');
      * ```
-     * This code will print:
+     * The above code will print:
      * ```
      * before
      * child
@@ -128,13 +127,13 @@ export type RouterContext<
   Readonly<{
     /**
      * A sequence of routes connecting the root route to the resolved leaf
-     * route. For convenience, it starts with the leaf route and ends with
-     * the root route.
+     * route. For convenience, it starts with the leaf route and ends with the
+     * root route.
      */
     branch: ReadonlyArray<Route<T, R, C>>;
 
     /**
-     * A result of the current resolution. It is an object returned by
+     * The result of the current resolution. It is an object returned by the
      * {@link https://developer.mozilla.org/en-US/docs/Web/API/URLPattern/exec | URLPattern#exec }
      * method.
      */
@@ -151,18 +150,23 @@ export type RouterContext<
     url: URL;
 
     /**
-     * The method that will execute an action of the next route in the
+     * The method that will execute the action of the next route in the
      * resolution chain.
+     *
+     * @remarks
+     *
+     * Note that `next` can only be called once. Calling it multiple times will
+     * produce undefined behavior.
      */
     next(): Promise<T | null | undefined>;
   }>;
 
 /**
- * Describes a set of options to tune the router.
+ * Describes a set of options to customize the router behavior.
  *
- * @typeParam T - a value for an {@link Route.action} to return.
- * @typeParam R - an extension for the Route type to provide specific data.
- * @typeParam C - an extension for the {@link RouterContext} type to provide
+ * @typeParam T - The type of value returned by the {@link Route.action}.
+ * @typeParam R - An extension of the Route type that provides specific data.
+ * @typeParam C - An extension of the {@link RouterContext} type that provides
  * specific data.
  *
  * @public
@@ -174,64 +178,71 @@ export type RouterOptions<
   C extends Record<string, unknown> = EmptyRecord,
 > = Readonly<{
   /**
-   * A base URL that all the routes will be resolved against. Designed for
-   * applications that are hosted on URLs like the following:
+   * The base URL against which all routes will be resolved. This option is
+   * designed for applications hosted on URLs like the following:
    *
    * ```
    * https://example.com/path/to/my/root
    * ```
+   *
+   * @defaultValue `window.location.origin`
    */
   baseURL?: URL | string;
 
   /**
-   * Allows using the old-style hash routing. With this option enabled, all URLs
-   * will be resolved like the following:
+   * Enables the use of old-style hash routing. When this option is enabled, all
+   * URLs will be resolved as follows:
    *
    * ```
    * https://example.com/#/foo/bar
    *                      ^ resolved route URL
    * ```
+   *
+   * @defaultValue `false`
    */
   hash?: boolean;
 
   /**
-   * Called in case there is an error thrown during the resolution.
+   * Invoked when an error is thrown during the resolution process.
    *
    * @remarks
    *
-   * Not called for 404 error.
+   * This function is not called for 404 errors.
    *
-   * @param error - an error thrown during the resolution.
-   * @param context - a context of the current resolution.
+   * @param error - The error thrown during the resolution.
+   * @param context - The context of the current resolution.
+   *
+   * @returns A result that will be delivered to the {@link Router.resolve}
+   * method.
    */
   errorHandler?(error: unknown, context: RouterContext<T, R, C>): ActionResult<T>;
 }>;
 
 /**
- * Defines an error thrown if the resolving URL does not match any pattern known
- * by the router.
+ * Defines an error that is thrown when the resolving URL does not match any
+ * pattern known by the router.
  *
- * This error cannot be handled by {@link RouterOptions.errorHandler}. To
- * address this error, you should create a route that consumes all possible
- * URLs and put it at the end of routes list. Thus, if routes coming first
- * won't be able to handle this URL, it will be handled by this route and
+ * This error cannot be handled by the {@link RouterOptions.errorHandler}. To
+ * handle this error, you should create a route that consumes all possible URLs
+ * and place it at the end of the routes list. This way, if the preceding routes
+ * are unable to handle the URL, it will be handled by this route, and the
  * `NotFoundError` will never be thrown.
  *
  * @example
  * ```ts
- * const route = new Router<string>([
+ * const router = new Router<string>([
  *   {
  *     path: '/foo',
  *   },
  *   {
- *     action() { console.log('404: Page not found'); }
+ *     action() { console.log('404: Page not found'); },
  *     path: '*',
  *   }
  * ]);
  *
- * await route.resolve('/foo/bar');
+ * await router.resolve('/foo/bar');
  * ```
- * The example above will print in the console:
+ * The example above will print the following message in the console:
  * ```
  * 404: Page not found
  * ```
@@ -245,14 +256,14 @@ export class NotFoundError extends Error {
 }
 
 /**
- * Describes a route object.
+ * The main class that creates a router instance.
  *
- * @typeParam T - a value for an {@link Route.action | action} to return.
- * @typeParam R - an extension for the Route type to provide specific data.
- * @typeParam C - an extension for the {@link RouterContext} type to provide
+ * @typeParam T - The type of value returned by the {@link Route.action}.
+ * @typeParam R - An extension of the Route type that provides specific data.
+ * @typeParam C - An extension of the {@link RouterContext} type that provides
  * specific data.
  *
- * @public available since version 1.0.0.
+ * @public
  */
 export class Router<
   T = unknown,
@@ -264,6 +275,12 @@ export class Router<
   readonly #options: RouterOptions<T, R, C>;
   readonly #baseURL: string;
 
+  /**
+   * Constructs a router instance.
+   *
+   * @param routes - The root route or a list of routes.
+   * @param options - The optional parameter to customize the router behavior.
+   */
   constructor(routes: ReadonlyArray<Route<T, R, C>> | Route<T, R, C>, options: RouterOptions<T, R, C> = {}) {
     this.#routes = Array.isArray(routes) ? routes : [routes];
     this.#options = options;
@@ -287,18 +304,29 @@ export class Router<
     }
   }
 
+  /**
+   * Gets the list of provided routes.
+   */
   get routes(): ReadonlyArray<Route<T, R, C>> {
     return this.#routes;
   }
 
+  /**
+   * Gets the list of provided options.
+   */
   get options(): RouterOptions<T, R, C> {
     return this.#options;
   }
 
   /**
+   * Resolves the provided path based on the established routes.
    *
-   * @param path -
-   * @param context -
+   * @param path - The path to be resolved. It can be either an absolute URL
+   * or a string path relative to the {@link RouterOptions.baseURL}.
+   * @param context - Any data that needs to be sent to {@link Route.action}.
+   * The type of this parameter should match the `C` type parameter of the
+   * Route. If `C` is not provided or is equal to {@link EmptyRecord}, providing
+   * this parameter is forbidden.
    */
   async resolve(path: URL | string, ...context: Optional<C>): Promise<T | null | undefined>;
   async resolve(path: URL | string, context?: C): Promise<T | null | undefined> {
