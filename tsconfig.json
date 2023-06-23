@@ -18,6 +18,6 @@
     "noEmit": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["scripts/**/*", "src/**/*", "test/**/*", ".lintstagedrc.js", "vite.config.ts"],
+  "include": ["scripts/**/*", "src/**/*", "test/**/*", ".lintstagedrc.js", ".size-limit.cjs", "vite.config.ts"],
   "exclude": ["node_modules"]
 }
