@@ -1,6 +1,6 @@
 import micromatch from 'micromatch';
 
-const excludePatterns = ['**/node_modules/**/*', 'docs/**', 'vite.generated.ts'];
+const excludePatterns = ['**/node_modules/**/*', '**/docs/**/*', 'vite.generated.ts'];
 
 function createExcludeCallback(command) {
   return (files) => {
