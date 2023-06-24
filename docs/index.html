@@ -24,7 +24,13 @@
 <div class="col-content">
 <div class="tsd-page-title">
 <h2>@ausginer/router</h2></div>
-<div class="tsd-panel tsd-typography"><a id="md:ausginerrouter" class="tsd-anchor"></a><h1><a href="#md:ausginerrouter">@ausginer/router</a></h1><p>A tiny (787 bytes) and easy-to-use middleware-style router for client and server-side development.
+<div class="tsd-panel tsd-typography"><div align="center">
+<h1>@ausginer/router</h1>
+
+<p><a href="https://ausginer.github.io/router/">API Documentation</a></p>
+</div>
+
+<p>A tiny (787 bytes) and easy-to-use middleware-style router for client and server-side development.
 It is based on the new experimental <a href="https://developer.mozilla.org/en-US/docs/Web/API/URLPattern">URLPattern</a> API and draws inspiration from <a href="https://github.com/kriasoft/universal-router">universal-router</a>.</p>
 <a id="md:features" class="tsd-anchor"></a><h2><a href="#md:features">Features</a></h2><ul>
 <li>The code is minimalistic and does not rely on any dependencies except for the <code>URLPattern</code> <a href="https://github.com/kenchris/urlpattern-polyfill">polyfill</a>, which is needed for browsers that do not support the <code>URLPattern</code> API yet.</li>
@@ -32,8 +38,8 @@ It is based on the new experimental <a href="https://developer.mozilla.org/en-US
 <li>It follows a middleware approach similar to <a href="http://expressjs.com/">Express</a>.</li>
 </ul>
 <a id="md:requirements" class="tsd-anchor"></a><h2><a href="#md:requirements">Requirements</a></h2><ul>
-<li>ECMA version: <code>ES2022</code>. The package uses <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/Private_class_fields">private class members</a> and <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/at">Array.prototype.at</a> method. All evergreen browsers support it by default.</li>
-<li>Since <code>URLPattern</code> is an experimental technology, the polyfill is required. For convenience, the polyfill is already included as a dependency of the package. However, loading is performed conditionally: the polyfill is loaded only for browsers that does not have <code>URLPattern</code> natively. With the polyfill, the size of the router is <strong>6.03</strong> Kb.</li>
+<li>ECMA version: ES2022. The package utilizes <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/Private_class_fields">private class members</a> and the <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/at">Array.prototype.at</a> method. These features are supported by all modern browsers by default.</li>
+<li>As <code>URLPattern</code> is an experimental technology, a polyfill is required. The package includes the polyfill as a dependency for convenience but the polyfill is loaded conditionally, only for browsers that do not have native support for <code>URLPattern</code>. With the polyfill, the router&#39;s size is <strong>6.03</strong> Kb.</li>
 </ul>
 <a id="md:installation" class="tsd-anchor"></a><h2><a href="#md:installation">Installation</a></h2><ul>
 <li><a href="https://www.npmjs.com/package/@ausginer/router">npm</a>:<pre><code class="language-bash"><span class="hl-0">$</span><span class="hl-1"> </span><span class="hl-2">npm</span><span class="hl-1"> </span><span class="hl-2">i</span><span class="hl-1"> </span><span class="hl-2">@ausginer/router</span>
@@ -57,10 +63,9 @@ It is based on the new experimental <a href="https://developer.mozilla.org/en-US
 <ul>
 <li>
 <ul>
-<li><a href="#md:ausginerrouter"><span>@ausginer/router</span></a></li>
+<li><a href="#md:features"><span>Features</span></a></li>
 <li>
 <ul>
-<li><a href="#md:features"><span>Features</span></a></li>
 <li><a href="#md:requirements"><span>Requirements</span></a></li>
 <li><a href="#md:installation"><span>Installation</span></a></li>
 <li><a href="#md:usage"><span>Usage</span></a></li></ul></li></ul></li></ul></div></details></div>
