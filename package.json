@@ -28,7 +28,8 @@
     "universal",
     "routing",
     "routes",
-    "route"
+    "route",
+    "framework-agnostic"
   ],
   "author": "Vlad Rindevich <vladrin@vaadin.com> (https://github.com/Lodin)",
   "license": "MIT",

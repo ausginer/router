@@ -1,4 +1,8 @@
-# @ausginer/router
+<div align="center">
+<h1>@ausginer/router</h1>
+
+[API Documentation](https://ausginer.github.io/router/)
+</div>
 
 A tiny (787 bytes) and easy-to-use middleware-style router for client and server-side development.
 It is based on the new experimental [URLPattern](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern) API and draws inspiration from [universal-router](https://github.com/kriasoft/universal-router).
@@ -11,8 +15,8 @@ It is based on the new experimental [URLPattern](https://developer.mozilla.org/e
 
 ## Requirements
 
-- ECMA version: `ES2022`. The package uses [private class members](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/Private_class_fields) and [Array.prototype.at](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/at) method. All evergreen browsers support it by default.
-- Since `URLPattern` is an experimental technology, the polyfill is required. For convenience, the polyfill is already included as a dependency of the package. However, loading is performed conditionally: the polyfill is loaded only for browsers that does not have `URLPattern` natively. With the polyfill, the size of the router is **6.03** Kb.
+- ECMA version: ES2022. The package utilizes [private class members](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/Private_class_fields) and the [Array.prototype.at](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/at) method. These features are supported by all modern browsers by default.
+- As `URLPattern` is an experimental technology, a polyfill is required. The package includes the polyfill as a dependency for convenience but the polyfill is loaded conditionally, only for browsers that do not have native support for `URLPattern`. With the polyfill, the router's size is **6.03** Kb.
 
 ## Installation
 
