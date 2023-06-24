@@ -24,12 +24,16 @@
 <div class="col-content">
 <div class="tsd-page-title">
 <h2>@ausginer/router</h2></div>
-<div class="tsd-panel tsd-typography"><a id="md:ausginerrouter" class="tsd-anchor"></a><h1><a href="#md:ausginerrouter">@ausginer/router</a></h1><p>A small (788 bytes) and easy-to-use middleware-style router for client and server-side development.
+<div class="tsd-panel tsd-typography"><a id="md:ausginerrouter" class="tsd-anchor"></a><h1><a href="#md:ausginerrouter">@ausginer/router</a></h1><p>A tiny (787 bytes) and easy-to-use middleware-style router for client and server-side development.
 It is based on the new experimental <a href="https://developer.mozilla.org/en-US/docs/Web/API/URLPattern">URLPattern</a> API and draws inspiration from <a href="https://github.com/kriasoft/universal-router">universal-router</a>.</p>
 <a id="md:features" class="tsd-anchor"></a><h2><a href="#md:features">Features</a></h2><ul>
 <li>The code is minimalistic and does not rely on any dependencies except for the <code>URLPattern</code> <a href="https://github.com/kenchris/urlpattern-polyfill">polyfill</a>, which is needed for browsers that do not support the <code>URLPattern</code> API yet.</li>
 <li>It is designed to be framework-agnostic, meaning you can use it with any framework such as <a href="https://react.dev">React</a>, <a href="https://vuejs.org">Vue</a>, <a href="https://angular.io/">Angular</a>, or even without any framework at all.</li>
 <li>It follows a middleware approach similar to <a href="http://expressjs.com/">Express</a>.</li>
+</ul>
+<a id="md:requirements" class="tsd-anchor"></a><h2><a href="#md:requirements">Requirements</a></h2><ul>
+<li>ECMA version: <code>ES2022</code>. The package uses <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/Private_class_fields">private class members</a> and <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/at">Array.prototype.at</a> method. All evergreen browsers support it by default.</li>
+<li>Since <code>URLPattern</code> is an experimental technology, the polyfill is required. For convenience, the polyfill is already included as a dependency of the package. However, loading is performed conditionally: the polyfill is loaded only for browsers that does not have <code>URLPattern</code> natively. With the polyfill, the size of the router is <strong>6.03</strong> Kb.</li>
 </ul>
 <a id="md:installation" class="tsd-anchor"></a><h2><a href="#md:installation">Installation</a></h2><ul>
 <li><a href="https://www.npmjs.com/package/@ausginer/router">npm</a>:<pre><code class="language-bash"><span class="hl-0">$</span><span class="hl-1"> </span><span class="hl-2">npm</span><span class="hl-1"> </span><span class="hl-2">i</span><span class="hl-1"> </span><span class="hl-2">@ausginer/router</span>
@@ -42,7 +46,7 @@ It is based on the new experimental <a href="https://developer.mozilla.org/en-US
 </code><button>Copy</button></pre>
 </li>
 </ul>
-<a id="md:" class="tsd-anchor"></a><h2><a href="#md:"></a></h2></div></div>
+</div></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <details open class="tsd-index-accordion tsd-page-navigation"><summary class="tsd-accordion-summary">
@@ -55,8 +59,8 @@ It is based on the new experimental <a href="https://developer.mozilla.org/en-US
 <li>
 <ul>
 <li><a href="#md:features"><span>Features</span></a></li>
-<li><a href="#md:installation"><span>Installation</span></a></li>
-<li><a href="#md:"><span></span></a></li></ul></li></ul></li></ul></div></details></div>
+<li><a href="#md:requirements"><span>Requirements</span></a></li>
+<li><a href="#md:installation"><span>Installation</span></a></li></ul></li></ul></li></ul></div></details></div>
 <div class="site-menu">
 <nav class="tsd-navigation"><a href="modules.html" class="current"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-4"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-namespace)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M9.33 16V7.24H10.77L13.446 14.74C13.43 14.54 13.41 14.296 13.386 14.008C13.37 13.712 13.354 13.404 13.338 13.084C13.33 12.756 13.326 12.448 13.326 12.16V7.24H14.37V16H12.93L10.266 8.5C10.282 8.692 10.298 8.936 10.314 9.232C10.33 9.52 10.342 9.828 10.35 10.156C10.366 10.476 10.374 10.784 10.374 11.08V16H9.33Z" fill="var(--color-text)"></path></g></svg>
 <div>@ausginer/router</div></a>
