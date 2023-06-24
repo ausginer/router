@@ -19,6 +19,9 @@
   "files": [
     "*.{d.ts.map,d.ts,js.map,js}"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "https://github/ausginer/router"
