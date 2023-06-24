@@ -74,6 +74,6 @@ addNavigationListener((path) => {
     });
 });
 
-navigate('/user/100'); // Will show `<h1>My app</h1><div>User #100 data</div>`
-navigate('/not-existing-page'); // Will show `404: Page https://example.com/not-existing-page is not found.`
+navigate('/user/100'); // Will render `<h1>My app</h1><div>User #100 data</div>`
+navigate('/not-existing-page'); // Will render `404: Page https://example.com/not-existing-page is not found.`
 ```
