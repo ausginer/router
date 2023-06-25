@@ -5,6 +5,7 @@
   "main": "",
   "type": "module",
   "scripts": {
+    "prepare": "npm run clean && npm run build",
     "clean": "git clean -Xf . -e !.idea -e !.idea/**/* -e !.vscode -e !.vscode/**/* -e !node_modules -e !node_modules/**/*",
     "check": "concurrently npm:check:*",
     "check:type": "tsc --noEmit",
