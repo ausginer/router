@@ -1,7 +1,7 @@
 <div align="center">
 <h1>@ausginer/router</h1>
 
-[API Documentation](https://ausginer.github.io/router/)
+[API Documentation](https://ausginer.github.io/router/) | [Example](https://codesandbox.io/p/github/ausginer/router-examples/main)
 </div>
 
 A tiny (787 bytes) and easy-to-use middleware-style router for client and server-side development.
