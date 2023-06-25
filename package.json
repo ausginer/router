@@ -6,6 +6,9 @@
   "type": "module",
   "scripts": {
     "clean": "git clean -Xf . -e !.idea -e !.idea/**/* -e !.vscode -e !.vscode/**/* -e !node_modules -e !node_modules/**/*",
+    "check": "concurrently npm:check:*",
+    "check:type": "tsc --noEmit",
+    "check:lint": "eslint src/**/*.ts test/**/*.ts",
     "build": "concurrently npm:build:*",
     "build:code": "tsx scripts/build.ts",
     "build:declaration": "tsc -p tsconfig.build.json --emitDeclarationOnly",
@@ -13,7 +16,7 @@
     "docs": "typedoc",
     "test": "karma start karma.config.cjs",
     "test:watch": "npm run test -- --watch",
-    "test:cover": "npm run test -- --coverage",
+    "test:coverage": "npm run test -- --coverage",
     "size": "npm run build && size-limit"
   },
   "files": [
