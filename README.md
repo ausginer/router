@@ -23,7 +23,7 @@ It is based on the new experimental [URLPattern](https://developer.mozilla.org/e
 ## Requirements
 
 - ECMA version: ES2022. The package utilizes [private class members](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/Private_class_fields) and the [Array.prototype.at](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/at) method. These features are supported by all modern browsers by default.
-- As `URLPattern` is an experimental technology, a polyfill is required. The package includes the polyfill as a dependency for convenience but the polyfill is loaded conditionally, only for browsers that do not have native support for `URLPattern`. With polyfill, the router's size is:&nbsp;&nbsp;![BundleJS](https://deno.bundlejs.com/?q=@ausginer/router&badge=)
+- As `URLPattern` is an experimental technology, a polyfill is required. The package includes the polyfill as a dependency for convenience but the polyfill is loaded conditionally, only for browsers that do not have native support for `URLPattern`. Polyfill adds&nbsp;&nbsp;![BundleJS](https://deno.bundlejs.com/?q=urlpattern-polyfill&badge=)&nbsp;&nbsp;to the package size.
 
 ## Installation
 
