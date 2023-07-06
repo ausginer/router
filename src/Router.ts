@@ -170,13 +170,12 @@ export type RouterContext<
  * specific data.
  *
  * @public
- * @interface
  */
-export type RouterOptions<
+export interface RouterOptions<
   T = unknown,
   R extends Record<string, unknown> = EmptyRecord,
   C extends Record<string, unknown> = EmptyRecord,
-> = Readonly<{
+> {
   /**
    * The base URL against which all routes will be resolved. This option is
    * designed for applications hosted on URLs like the following:
@@ -216,7 +215,7 @@ export type RouterOptions<
    * method.
    */
   errorHandler?(error: unknown, context: RouterContext<T, R, C>): ActionResult<T>;
-}>;
+}
 
 /**
  * Defines an error that is thrown when the resolving URL does not match any
