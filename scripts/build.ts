@@ -1,17 +1,17 @@
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
+import { glob } from 'glob';
 
-const root = new URL('../', import.meta.url);
+const cwd = new URL('../', import.meta.url);
+const entryPoints = await glob('./src/**/*.ts', { cwd });
 
 await build({
-  bundle: true,
-  entryPoints: [fileURLToPath(new URL('./src/index.ts', root))],
+  entryPoints,
   format: 'esm',
-  minify: true,
-  outdir: fileURLToPath(root),
+  outdir: fileURLToPath(cwd),
   packages: 'external',
   sourcemap: 'linked',
   sourcesContent: true,
   target: 'es2022',
-  tsconfig: fileURLToPath(new URL('./tsconfig.build.json', root)),
+  tsconfig: fileURLToPath(new URL('./tsconfig.build.json', cwd)),
 });
