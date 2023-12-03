@@ -1,5 +1,5 @@
-// eslint-disable-next-line @typescript-eslint/triple-slash-reference,spaced-comment
-// / <reference types="urlpattern-polyfill" />
+// eslint-disable-next-line
+/// <reference types="urlpattern-polyfill" />
 import type { EmptyRecord, Optional } from './types.js';
 
 /**
