@@ -1,7 +1,7 @@
 {
   "name": "@ausginer/router",
   "version": "1.0.0-beta.0",
-  "description": "A tiny frontend router for the frontend built on top of the native URLPattern.",
+  "description": "A tiny router for the frontend built on top of the native URLPattern.",
   "main": "",
   "type": "module",
   "scripts": {
