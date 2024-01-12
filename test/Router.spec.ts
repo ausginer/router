@@ -139,9 +139,9 @@ describe('Router', () => {
       }>;
 
       const router = new Router<string, RouteExtension>({
-        async action({ branch: [route], next }) {
+        async action({ branch, next }) {
           return `Foo-${String(await next())}|${JSON.stringify({
-            child: String(route.requiresLogin),
+            child: String(branch.at(-1)?.requiresLogin),
             parent: this.requiresLogin,
           })}`;
         },

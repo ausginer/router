@@ -127,8 +127,7 @@ export type RouterContext<
   Readonly<{
     /**
      * A sequence of routes connecting the root route to the resolved leaf
-     * route. For convenience, it starts with the leaf route and ends with the
-     * root route.
+     * route. The root route comes first, and the leaf route comes last.
      */
     branch: ReadonlyArray<Route<T, R, C>>;
 
@@ -335,7 +334,6 @@ export class Router<
       const result = pattern.exec(url);
 
       if (result) {
-        const reversedBranch = branch.slice().reverse();
         const iter = branch.values();
 
         const next = async (): Promise<T | null | undefined> => {
@@ -351,7 +349,7 @@ export class Router<
 
           const routeCtx = {
             ...context!,
-            branch: reversedBranch,
+            branch,
             next,
             result,
             router: this,
