@@ -1,6 +1,6 @@
 {
   "name": "@ausginer/router",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "description": "A tiny router for the frontend built on top of the native URLPattern.",
   "main": "",
   "type": "module",
