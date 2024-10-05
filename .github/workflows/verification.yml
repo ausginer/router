@@ -2,7 +2,7 @@ name: Verification
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request_target:
   workflow_dispatch:
 
@@ -13,13 +13,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout Project Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Use NodeJS LTS
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: lts
       - name: Install
         run: npm ci
       - name: Lint
@@ -29,9 +29,8 @@ jobs:
         env:
           CI: true
       - name: Send Coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: .coverage/lcov.info
           flags: unittests
           fail_ci_if_error: true
-
