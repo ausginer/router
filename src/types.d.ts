@@ -1,11 +1,6 @@
-/**
- * Represents an empty object.
- */
-export type EmptyRecord = Record<never, never>;
+export type { EmptyObject } from 'type-fest';
 
 /**
- * Represents a parameter that should be optional depending on the generic `T`
- * type provided. If `T` is the {@link EmptyRecord}, providing the parameter is
- * forbidden; otherwise, it is required.
+ * Represents any possible object.
  */
-export type Optional<T extends Record<string, unknown>> = keyof T extends never ? [] : [T];
+export type AnyObject = Record<never, never>;

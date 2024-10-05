@@ -1,6 +1,7 @@
-import type { EmptyRecord, Optional } from './types.js';
+import type { EmptyObject } from 'type-fest';
+import type { AnyObject } from './types.js';
 
-type HistoryState<C extends Record<string, unknown> = EmptyRecord> = Readonly<{
+type HistoryState<C extends AnyObject = EmptyObject> = Readonly<{
   context?: C;
   path: URL | string;
 }>;
@@ -16,15 +17,16 @@ type HistoryState<C extends Record<string, unknown> = EmptyRecord> = Readonly<{
  * string path relative to the {@link RouterOptions.baseURL}.
  * @param context - Any data that needs to be sent to {@link Route.action}. The
  * type of this parameter should match the generic `C`. If `C` is not provided
- * or is equal to {@link EmptyRecord}, providing this parameter is forbidden.
+ * or is equal to {@link EmptyObject}, providing this parameter is forbidden.
  * @event PopStateEvent - The event that notifies the application that the URL
  * has changed.
  */
-export function navigate<C extends Record<string, unknown> = EmptyRecord>(
+export function navigate(path: URL | string): void;
+export function navigate<C extends AnyObject = EmptyObject>(
   path: URL | string,
-  ...context: Optional<C>
+  context: C extends EmptyObject ? never : C,
 ): void;
-export function navigate<C extends Record<string, unknown> = EmptyRecord>(path: URL | string, context?: C): void {
+export function navigate<C extends AnyObject = EmptyObject>(path: URL | string, context?: C): void {
   const state: HistoryState<C> = { context, path: String(path) };
   history.pushState(state, '', new URL(path, location.origin));
   dispatchEvent(new PopStateEvent('popstate', { state }));
@@ -41,17 +43,17 @@ export function navigate<C extends Record<string, unknown> = EmptyRecord>(path: 
  * listener. It supports all the parameters of {@link https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener | addEventListener}
  * function.
  */
-export function addNavigationListener<C extends Record<string, unknown> = EmptyRecord>(
-  listener: (path: URL | string, ...context: Optional<C>) => void,
+export function addNavigationListener<C extends AnyObject = EmptyObject>(
+  listener: C extends EmptyObject ? (path: URL | string) => void : (path: URL | string, context: C) => void,
   options?: AddEventListenerOptions,
 ): void;
-export function addNavigationListener<C extends Record<string, unknown> = EmptyRecord>(
+export function addNavigationListener<C extends AnyObject = EmptyObject>(
   listener: (path: URL | string, context?: C) => void,
   options?: AddEventListenerOptions,
 ): void {
   addEventListener(
     'popstate',
-    ({ state: { context, path } }: Omit<PopStateEvent, 'state'> & Readonly<{ state: HistoryState<C> }>) => {
+    ({ state: { context, path } }: PopStateEvent & Readonly<{ state: HistoryState<C> }>) => {
       listener(path, context);
     },
     options,
