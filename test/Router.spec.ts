@@ -2,7 +2,7 @@ import { expect, use } from '@esm-bundle/chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import { Router, NotFoundError } from '../src/Router.js';
-import type { EmptyRecord } from '../src/types.js';
+import type { AnyObject } from '../src/types.js';
 
 use(chaiAsPromised);
 
@@ -110,7 +110,7 @@ describe('Router', () => {
       const router = new Router<string>({
         async action({ next, url }) {
           if (url.searchParams.has('authenticated')) {
-            return next();
+            return await next();
           }
 
           return 'Authentication required';
@@ -208,7 +208,7 @@ describe('Router', () => {
     });
 
     it('throws an error if the path cannot be associated', async () => {
-      const router = new Router<string, EmptyRecord>({
+      const router = new Router<string, AnyObject>({
         action() {
           return 'Foo';
         },
@@ -226,7 +226,7 @@ describe('Router', () => {
           },
           children: [
             {
-              async action() {
+              action() {
                 return 'Foo';
               },
               path: '/foo',
@@ -235,7 +235,7 @@ describe('Router', () => {
           path: '',
         },
         {
-          async action() {
+          action() {
             return '404';
           },
           path: '*',
@@ -252,7 +252,7 @@ describe('Router', () => {
 
       const errorHandler = sinon.spy();
 
-      const router = new Router<string, EmptyRecord, Context>(
+      const router = new Router<string, AnyObject, Context>(
         {
           children: [
             {
@@ -301,7 +301,7 @@ describe('Router', () => {
     it('allows receiving context in actions', async () => {
       type Context = Readonly<{ data: string }>;
 
-      const router = new Router<string, EmptyRecord, Context>({
+      const router = new Router<string, AnyObject, Context>({
         action({ data }) {
           return `Foo--${data}`;
         },

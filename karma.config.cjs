@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-call, @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-member-access, import/unambiguous */
 const { resolve } = require('node:path');
 const { parseArgs } = require('node:util');
 const karmaChromeLauncher = require('karma-chrome-launcher');

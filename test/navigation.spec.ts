@@ -15,7 +15,7 @@ describe('Navigation', () => {
     const BASE_PATH = location.origin;
     const DEFAULT_PAGE = location.href;
 
-    afterEach(async () => {
+    afterEach(() => {
       const state: HistoryState<never> = { path: DEFAULT_PAGE };
       history.pushState(state, '', DEFAULT_PAGE);
       dispatchEvent(new PopStateEvent('popstate', { state }));

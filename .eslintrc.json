@@ -6,11 +6,19 @@
     "vaadin/prettier",
     "vaadin/testing"
   ],
-  "plugins": [
-    "eslint-plugin-tsdoc"
-  ],
+  "plugins": ["eslint-plugin-tsdoc"],
   "rules": {
     "@typescript-eslint/promise-function-async": "off",
-    "tsdoc/syntax": "error"
-  }
+    "tsdoc/syntax": "error",
+    "@typescript-eslint/no-useless-template-literals": "off"
+  },
+  "overrides": [
+    {
+      "files": ["*.cjs"],
+      "env": {
+        "node": true,
+        "commonjs": true
+      }
+    }
+  ]
 }

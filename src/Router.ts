@@ -1,6 +1,6 @@
 // eslint-disable-next-line
 /// <reference types="urlpattern-polyfill" />
-import type { EmptyRecord, Optional } from './types.js';
+import type { AnyObject, EmptyObject } from './types.js';
 
 /**
  * Describes the result of the {@link Route.action}. It can be either a
@@ -27,11 +27,7 @@ export type ActionResult<T> = Promise<T | null | undefined> | T | null | undefin
  * @public
  * @interface
  */
-export type Route<
-  T = unknown,
-  R extends Record<string, unknown> = EmptyRecord,
-  C extends Record<string, unknown> = EmptyRecord,
-> = R &
+export type Route<T = unknown, R extends AnyObject = EmptyObject, C extends AnyObject = EmptyObject> = R &
   Readonly<{
     /**
      * Contains a list of nested routes.
@@ -119,11 +115,7 @@ export type Route<
  * @public
  * @interface
  */
-export type RouterContext<
-  T = unknown,
-  R extends Record<string, unknown> = EmptyRecord,
-  C extends Record<string, unknown> = EmptyRecord,
-> = C &
+export type RouterContext<T = unknown, R extends AnyObject = EmptyObject, C extends AnyObject = EmptyObject> = C &
   Readonly<{
     /**
      * A sequence of routes connecting the root route to the resolved leaf
@@ -170,11 +162,7 @@ export type RouterContext<
  *
  * @public
  */
-export interface RouterOptions<
-  T = unknown,
-  R extends Record<string, unknown> = EmptyRecord,
-  C extends Record<string, unknown> = EmptyRecord,
-> {
+export interface RouterOptions<T = unknown, R extends AnyObject = EmptyObject, C extends AnyObject = EmptyObject> {
   /**
    * The base URL against which all routes will be resolved. This option is
    * designed for applications hosted on URLs like the following:
@@ -263,11 +251,7 @@ export class NotFoundError extends Error {
  *
  * @public
  */
-export class Router<
-  T = unknown,
-  R extends Record<string, unknown> = EmptyRecord,
-  C extends Record<string, unknown> = EmptyRecord,
-> {
+export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends AnyObject = EmptyObject> {
   readonly #routes: ReadonlyArray<Route<T, R, C>>;
   readonly #patterns = new Map<URLPattern, ReadonlyArray<Route<T, R, C>>>();
   readonly #options: RouterOptions<T, R, C>;
@@ -323,51 +307,60 @@ export class Router<
    * or a string path relative to the {@link RouterOptions.baseURL}.
    * @param context - Any data that needs to be sent to {@link Route.action}.
    * The type of this parameter should match the `C` type parameter of the
-   * Route. If `C` is not provided or is equal to {@link EmptyRecord}, providing
+   * Route. If `C` is not provided or is equal to {@link AnyObject}, providing
    * this parameter is forbidden.
    */
-  async resolve(path: URL | string, ...context: Optional<C>): Promise<T | null | undefined>;
+  async resolve(path: URL | string): Promise<T | null | undefined>;
+  // eslint-disable-next-line @typescript-eslint/unified-signatures
+  async resolve(path: URL | string, context: C extends EmptyObject ? never : C): Promise<T | null | undefined>;
   async resolve(path: URL | string, context?: C): Promise<T | null | undefined> {
     const url = new URL(path, this.#baseURL);
 
+    const [result, branch] = this.#search(url);
+
+    const iter = branch.values();
+
+    const next = async (): Promise<T | null | undefined> => {
+      const { done, value } = iter.next();
+
+      if (done) {
+        return undefined;
+      }
+
+      if (!value.action) {
+        return await next();
+      }
+
+      const routeCtx = {
+        ...context!,
+        branch,
+        next,
+        result,
+        router: this,
+        url,
+      };
+
+      try {
+        return await value.action(routeCtx);
+      } catch (error: unknown) {
+        if (this.#options.errorHandler) {
+          return await this.#options.errorHandler(error, routeCtx);
+        }
+
+        throw error;
+      }
+    };
+
+    // eslint-disable-next-line no-await-in-loop
+    return await next();
+  }
+
+  #search(url: URL): readonly [URLPatternResult, ReadonlyArray<Route<T, R, C>>] {
     for (const [pattern, branch] of this.#patterns) {
       const result = pattern.exec(url);
 
       if (result) {
-        const iter = branch.values();
-
-        const next = async (): Promise<T | null | undefined> => {
-          const { done, value } = iter.next();
-
-          if (done) {
-            return undefined;
-          }
-
-          if (!value.action) {
-            return next();
-          }
-
-          const routeCtx = {
-            ...context!,
-            branch,
-            next,
-            result,
-            router: this,
-            url,
-          };
-
-          try {
-            return await value.action(routeCtx);
-          } catch (error: unknown) {
-            if (this.#options.errorHandler) {
-              return this.#options.errorHandler(error, routeCtx);
-            }
-
-            throw error;
-          }
-        };
-
-        return next();
+        return [result, branch];
       }
     }
 
