@@ -34,3 +34,4 @@ jobs:
           files: .coverage/lcov.info
           flags: unittests
           fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
