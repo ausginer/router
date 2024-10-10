@@ -1,7 +1,7 @@
 import { expect, use } from '@esm-bundle/chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
-import { Router, NotFoundError } from '../src/Router.js';
+import { Router, NotFoundError, type Route } from '../src/Router.js';
 import type { AnyObject } from '../src/types.js';
 
 use(chaiAsPromised);
@@ -313,6 +313,41 @@ describe('Router', () => {
 
       actual = await router.resolve('/foo', { data: 'XTC' });
       expect(actual).to.equal('Foo--XTC');
+    });
+  });
+
+  describe('Router#createURL', () => {
+    let route: Route;
+    let router: Router;
+
+    beforeEach(() => {
+      route = {
+        path: '/:bar',
+      };
+
+      router = new Router([
+        {
+          path: '/foo',
+          children: [route],
+        },
+      ]);
+    });
+
+    it('creates an URL from a path', () => {
+      const url = router.createURL(route, { bar: 'baz' });
+
+      expect(url).to.be.instanceOf(URL);
+      expect(url?.pathname).to.equal('/foo/baz/');
+    });
+
+    it('gets undefined if the route is not found', () => {
+      const url = router.createURL({ path: '/bar' });
+      expect(url).to.be.undefined;
+    });
+
+    it('does not fill parts if they are not provided', () => {
+      const url = router.createURL(route);
+      expect(url?.pathname).to.equal('/foo/:bar/');
     });
   });
 });

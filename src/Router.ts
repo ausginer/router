@@ -12,6 +12,9 @@ import type { AnyObject, EmptyObject } from './types.js';
  */
 export type ActionResult<T> = Promise<T | null | undefined> | T | null | undefined;
 
+export type URLCreatorParts = Readonly<Record<string, string>>;
+export type URLCreator = (parts?: URLCreatorParts) => URL;
+
 /**
  * Describes a single route.
  *
@@ -254,6 +257,7 @@ export class NotFoundError extends Error {
 export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends AnyObject = EmptyObject> {
   readonly #routes: ReadonlyArray<Route<T, R, C>>;
   readonly #patterns = new Map<URLPattern, ReadonlyArray<Route<T, R, C>>>();
+  readonly #builders = new Map<Route<T, R, C>, URLCreator>();
   readonly #options: RouterOptions<T, R, C>;
   readonly #baseURL: string;
 
@@ -272,15 +276,17 @@ export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends An
       const route = branch.at(-1)!;
 
       if (!route.children?.length) {
-        this.#patterns.set(
-          new URLPattern(
-            `${this.#options.hash ? '#/' : ''}${branch
-              .map((r) => r.path.replace(/^\/*(.*)\/*$/u, '$1'))
-              .filter(Boolean)
-              .join('/')}${this.#options.hash ? '' : '\\?*#*'}`,
-            this.#baseURL,
-          ),
-          branch,
+        this.#patterns.set(new URLPattern(this.#makePattern(branch), this.#baseURL), branch);
+        this.#builders.set(
+          route,
+          (parts = {}) =>
+            new URL(
+              Object.entries(parts).reduce(
+                (acc, [part, replacement]) => acc.replaceAll(`:${part}`, replacement),
+                this.#makePattern(branch),
+              ),
+              this.#baseURL,
+            ),
         );
       }
     }
@@ -298,6 +304,23 @@ export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends An
    */
   get options(): RouterOptions<T, R, C> {
     return this.#options;
+  }
+
+  /**
+   * Creates an URL for the provided route replacing the placeholders with the
+   * actual parts.
+   *
+   * @remarks
+   * If you provide insufficient parts, missing placeholders will remain in the
+   * URL.
+   *
+   * @param route - The route for which the URL should be created.
+   * @param parts - The parts to replace the placeholders in the route path.
+   * @returns - The URL or `undefined` if the URL builder is not found. This can
+   * happen, e.g., if the route is not a leaf route.
+   */
+  createURL(route: Route<T, R, C>, parts?: URLCreatorParts): URL | undefined {
+    return this.#builders.get(route)?.(parts);
   }
 
   /**
@@ -365,6 +388,13 @@ export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends An
     }
 
     throw new NotFoundError(url);
+  }
+
+  #makePattern(branch: ReadonlyArray<Route<T, R, C>>): string {
+    return `${this.#options.hash ? '#/' : ''}${branch
+      .map((r) => r.path.replace(/^\/*(.*)\/*$/u, '$1'))
+      .filter(Boolean)
+      .join('/')}${this.#options.hash ? '' : '\\?*#*'}`;
   }
 
   *#traverse(
