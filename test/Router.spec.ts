@@ -1,7 +1,7 @@
 import { expect, use } from '@esm-bundle/chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
-import { Router, NotFoundError, type Route } from '../src/Router.js';
+import { Router, NotFoundError } from '../src/Router.js';
 import type { AnyObject } from '../src/types.js';
 
 use(chaiAsPromised);
@@ -278,23 +278,6 @@ describe('Router', () => {
       expect(context).to.have.keys(['branch', 'data', 'next', 'result', 'router', 'url']);
       expect(error).to.be.instanceOf(CustomError);
     });
-
-    it('allows using hash instead of the full URL', async () => {
-      const router = new Router(
-        [
-          {
-            action() {
-              return `Foo`;
-            },
-            path: '/foo',
-          },
-        ],
-        { hash: true },
-      );
-
-      const result = await router.resolve('#/foo');
-      expect(result).to.equal('Foo');
-    });
   });
 
   describe('Router#resolve', () => {
@@ -317,37 +300,75 @@ describe('Router', () => {
   });
 
   describe('Router#createURL', () => {
-    let route: Route;
-    let router: Router;
-
-    beforeEach(() => {
-      route = {
+    it('creates an URL from a path', () => {
+      const route = {
         path: '/:bar',
       };
 
-      router = new Router([
+      const router = new Router([
         {
           path: '/foo',
           children: [route],
         },
       ]);
-    });
 
-    it('creates an URL from a path', () => {
       const url = router.createURL(route, { bar: 'baz' });
 
       expect(url).to.be.instanceOf(URL);
-      expect(url?.pathname).to.equal('/foo/baz/');
+      expect(url?.pathname).to.equal('/foo/baz');
     });
 
     it('gets undefined if the route is not found', () => {
+      const route = {
+        path: '/:bar',
+      };
+
+      const router = new Router([
+        {
+          path: '/foo',
+          children: [route],
+        },
+      ]);
+
       const url = router.createURL({ path: '/bar' });
       expect(url).to.be.undefined;
     });
 
     it('does not fill parts if they are not provided', () => {
+      const route = {
+        path: '/:bar',
+      };
+
+      const router = new Router([
+        {
+          path: '/foo',
+          children: [route],
+        },
+      ]);
+
       const url = router.createURL(route);
-      expect(url?.pathname).to.equal('/foo/:bar/');
+      expect(url?.pathname).to.equal('/foo/:bar');
+    });
+
+    it('allows using unnamed parts', () => {
+      const route = {
+        path: '*',
+      };
+
+      const router = new Router([
+        {
+          path: '/foo',
+          children: [
+            {
+              path: '/*/',
+              children: [route],
+            },
+          ],
+        },
+      ]);
+
+      const url = router.createURL(route, { 0: 'bar', 1: 'baz' });
+      expect(url?.pathname).to.equal('/foo/bar/baz');
     });
   });
 });

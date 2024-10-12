@@ -3,14 +3,13 @@
 import type { AnyObject, EmptyObject } from './types.js';
 
 /**
- * Describes the result of the {@link Route.action}. It can be either a
- * `Promise` or a plain value.
+ * Describes the value that could be either be a promise or a plain value.
  *
- * @typeParam T - The type of value returned by the action.
+ * @typeParam T - The type of value.
  *
  * @public
  */
-export type ActionResult<T> = Promise<T | null | undefined> | T | null | undefined;
+export type MaybePromise<T> = T | Promise<T>;
 
 export type URLCreatorParts = Readonly<Record<string, string>>;
 export type URLCreator = (parts?: URLCreatorParts) => URL;
@@ -109,7 +108,7 @@ export type Route<T = unknown, R extends AnyObject = EmptyObject, C extends AnyO
      * after
      * ```
      */
-    action?(this: Route<T, R, C>, context: RouterContext<T, R, C>): ActionResult<T>;
+    action?(this: Route<T, R, C>, context: RouterContext<T, R, C>): MaybePromise<T | null | undefined>;
   }>;
 
 /**
@@ -179,19 +178,6 @@ export interface RouterOptions<T = unknown, R extends AnyObject = EmptyObject, C
   baseURL?: URL | string;
 
   /**
-   * Enables the use of old-style hash routing. When this option is enabled, all
-   * URLs will be resolved as follows:
-   *
-   * ```
-   * https://example.com/#/foo/bar
-   *                      ^ resolved route URL
-   * ```
-   *
-   * @defaultValue `false`
-   */
-  hash?: boolean;
-
-  /**
    * Invoked when an error is thrown during the resolution process.
    *
    * @remarks
@@ -204,7 +190,7 @@ export interface RouterOptions<T = unknown, R extends AnyObject = EmptyObject, C
    * @returns A result that will be delivered to the {@link Router.resolve}
    * method.
    */
-  errorHandler?(error: unknown, context: RouterContext<T, R, C>): ActionResult<T>;
+  errorHandler?(error: unknown, context: RouterContext<T, R, C>): MaybePromise<T | null | undefined>;
 }
 
 /**
@@ -276,18 +262,28 @@ export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends An
       const route = branch.at(-1)!;
 
       if (!route.children?.length) {
-        this.#patterns.set(new URLPattern(this.#makePattern(branch), this.#baseURL), branch);
-        this.#builders.set(
-          route,
-          (parts = {}) =>
-            new URL(
-              Object.entries(parts).reduce(
-                (acc, [part, replacement]) => acc.replaceAll(`:${part}`, replacement),
-                this.#makePattern(branch),
-              ),
-              this.#baseURL,
+        const url = branch
+          .map((r) => r.path.replace(/^\/*(.*?)\/*$/u, '$1'))
+          .filter(Boolean)
+          .join('/');
+        const pattern = new URLPattern(url, this.#baseURL);
+
+        this.#patterns.set(pattern, branch);
+        this.#builders.set(route, (parts = {}) => {
+          // Result canot be undefined because we create the pattern from its
+          // source.
+          const result = pattern.exec(new URL(url, this.#baseURL))!;
+
+          return new URL(
+            Object.entries(result.pathname.groups).reduce(
+              // Value cannot be undefined here because we are iterating over
+              // the groups.
+              (acc, [key, value]) => acc.replace(value!, parts[key] ?? value),
+              result.pathname.input,
             ),
-        );
+            this.#baseURL,
+          );
+        });
       }
     }
   }
@@ -388,13 +384,6 @@ export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends An
     }
 
     throw new NotFoundError(url);
-  }
-
-  #makePattern(branch: ReadonlyArray<Route<T, R, C>>): string {
-    return `${this.#options.hash ? '#/' : ''}${branch
-      .map((r) => r.path.replace(/^\/*(.*)\/*$/u, '$1'))
-      .filter(Boolean)
-      .join('/')}${this.#options.hash ? '' : '\\?*#*'}`;
   }
 
   *#traverse(
