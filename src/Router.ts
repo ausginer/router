@@ -261,30 +261,28 @@ export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends An
     for (const branch of this.#traverse(this.#routes)) {
       const route = branch.at(-1)!;
 
-      if (!route.children?.length) {
-        const url = branch
-          .map((r) => r.path.replace(/^\/*(.*?)\/*$/u, '$1'))
-          .filter(Boolean)
-          .join('/');
-        const pattern = new URLPattern(url, this.#baseURL);
+      const url = branch
+        .map((r) => r.path.replace(/^\/*(.*?)\/*$/u, '$1'))
+        .filter(Boolean)
+        .join('/');
+      const pattern = new URLPattern(url, this.#baseURL);
 
-        this.#patterns.set(pattern, branch);
-        this.#builders.set(route, (parts = {}) => {
-          // Result canot be undefined because we create the pattern from its
-          // source.
-          const result = pattern.exec(new URL(url, this.#baseURL))!;
+      this.#patterns.set(pattern, branch);
+      this.#builders.set(route, (parts = {}) => {
+        // Result canot be undefined because we create the pattern from its
+        // source.
+        const result = pattern.exec(new URL(url, this.#baseURL))!;
 
-          return new URL(
-            Object.entries(result.pathname.groups).reduce(
-              // Value cannot be undefined here because we are iterating over
-              // the groups.
-              (acc, [key, value]) => acc.replace(value!, parts[key] ?? value),
-              result.pathname.input,
-            ),
-            this.#baseURL,
-          );
-        });
-      }
+        return new URL(
+          Object.entries(result.pathname.groups).reduce(
+            // Value cannot be undefined here because we are iterating over
+            // the groups.
+            (acc, [key, value]) => acc.replace(value!, parts[key] ?? value),
+            result.pathname.input,
+          ),
+          this.#baseURL,
+        );
+      });
     }
   }
 
@@ -393,10 +391,10 @@ export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends An
     for (const route of routes) {
       const chain = [...parents, route];
 
-      yield chain;
-
-      if (route.children) {
+      if (route.children?.length) {
         yield* this.#traverse(route.children, chain);
+      } else {
+        yield chain;
       }
     }
   }
