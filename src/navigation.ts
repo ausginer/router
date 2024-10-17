@@ -1,7 +1,6 @@
 import type { EmptyObject } from 'type-fest';
-import type { AnyObject } from './types.js';
 
-type HistoryState<C extends AnyObject = EmptyObject> = Readonly<{
+type HistoryState<C extends object = EmptyObject> = Readonly<{
   context?: C;
   path: URL | string;
 }>;
@@ -22,14 +21,13 @@ type HistoryState<C extends AnyObject = EmptyObject> = Readonly<{
  * has changed.
  */
 export function navigate(path: URL | string): void;
-export function navigate<C extends AnyObject = EmptyObject>(
+export function navigate<C extends object = EmptyObject>(
   path: URL | string,
   context: C extends EmptyObject ? never : C,
 ): void;
-export function navigate<C extends AnyObject = EmptyObject>(path: URL | string, context?: C): void {
-  const state: HistoryState<C> = { context, path: String(path) };
-  history.pushState(state, '', new URL(path, location.origin));
-  dispatchEvent(new PopStateEvent('popstate', { state }));
+export function navigate<C extends object = EmptyObject>(path: URL | string, context?: C): void {
+  history.pushState({ context, path: path.toString() }, '', path);
+  dispatchEvent(new PopStateEvent('popstate'));
 }
 
 /**
@@ -43,18 +41,19 @@ export function navigate<C extends AnyObject = EmptyObject>(path: URL | string, 
  * listener. It supports all the parameters of {@link https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener | addEventListener}
  * function.
  */
-export function addNavigationListener<C extends AnyObject = EmptyObject>(
-  listener: C extends EmptyObject ? (path: URL | string) => void : (path: URL | string, context: C) => void,
+export function addNavigationListener<C extends object = EmptyObject>(
+  listener: C extends EmptyObject ? (path: URL) => void : (path: URL, context: C) => void,
   options?: AddEventListenerOptions,
 ): void;
-export function addNavigationListener<C extends AnyObject = EmptyObject>(
-  listener: (path: URL | string, context?: C) => void,
+export function addNavigationListener<C extends object = EmptyObject>(
+  listener: (path: URL, context?: C) => void,
   options?: AddEventListenerOptions,
 ): void {
   addEventListener(
     'popstate',
-    ({ state: { context, path } }: PopStateEvent & Readonly<{ state: HistoryState<C> }>) => {
-      listener(path, context);
+    () => {
+      const { context, path } = history.state as HistoryState<C>;
+      listener(new URL(path), context);
     },
     options,
   );

@@ -18,37 +18,22 @@ describe('Navigation', () => {
     afterEach(() => {
       const state: HistoryState<never> = { path: DEFAULT_PAGE };
       history.pushState(state, '', DEFAULT_PAGE);
-      dispatchEvent(new PopStateEvent('popstate', { state }));
+      dispatchEvent(new PopStateEvent('popstate'));
     });
 
     it('navigates to the specified URL', (done) => {
       const url = new URL('/foo', BASE_PATH);
       addEventListener(
         'popstate',
-        (e) => {
-          expect(e.state).to.include({ context: undefined, path: url.toString() });
+        () => {
+          expect(history.state).to.include({ context: undefined, path: url.toString() });
           expect(location.href).to.equal(url.toString());
           done();
         },
         { once: true },
       );
 
-      navigate(url.toString());
-    });
-
-    it('propagates the navigation context via event', (done) => {
-      const url = new URL('/foo', BASE_PATH);
-      const ctx = { foo: 'bar' };
-      addEventListener(
-        'popstate',
-        ({ state: { context } }) => {
-          expect(context).to.equal(ctx);
-          done();
-        },
-        { once: true },
-      );
-
-      navigate(url, ctx);
+      navigate(url);
     });
 
     it('restores the context on history#back', (done) => {
@@ -58,10 +43,10 @@ describe('Navigation', () => {
       navigate(new URL('/bar', BASE_PATH));
       addEventListener(
         'popstate',
-        ({ state }) => {
+        () => {
           // History serializes object to store it, so the recovered object cannot be
           // strictly equal to the original one.
-          expect((state as HistoryState<typeof ctx> | null | undefined)?.context).to.deep.equal(ctx);
+          expect((history.state as HistoryState<typeof ctx>).context).to.deep.equal(ctx);
           done();
         },
         { once: true },
@@ -81,9 +66,11 @@ describe('Navigation', () => {
     it('listens for popstate event', () => {
       const spy = sinon.spy();
       addNavigationListener(spy);
-      dispatchEvent(new PopStateEvent('popstate', { state }));
+      const path = new URL('/foo', location.origin);
+      history.pushState({ context: 'bar', path: path.toString() }, '', path);
+      dispatchEvent(new PopStateEvent('popstate'));
 
-      expect(spy).to.have.been.calledWith('/foo', 'bar');
+      expect(spy).to.have.been.calledWith(path, 'bar');
     });
 
     it('accepts listener options', () => {
