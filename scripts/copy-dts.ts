@@ -9,6 +9,6 @@ await Promise.all(
   files.map(async (f) => {
     const file = new URL(f, root);
     await mkdir(new URL('./', file), { recursive: true });
-    return copyFile(new URL(f, src), file, constants.COPYFILE_FICLONE);
+    await copyFile(new URL(f, src), file, constants.COPYFILE_FICLONE);
   }),
 );

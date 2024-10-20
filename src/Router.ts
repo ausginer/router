@@ -1,16 +1,15 @@
 // eslint-disable-next-line
 /// <reference types="urlpattern-polyfill" />
-import type { AnyObject, EmptyObject } from './types.js';
+import type { EmptyObject } from 'type-fest';
 
 /**
- * Describes the result of the {@link Route.action}. It can be either a
- * `Promise` or a plain value.
+ * Describes the value that could be either be a promise or a plain value.
  *
- * @typeParam T - The type of value returned by the action.
+ * @typeParam T - The type of value.
  *
  * @public
  */
-export type ActionResult<T> = Promise<T | null | undefined> | T | null | undefined;
+export type MaybePromise<T> = T | Promise<T>;
 
 /**
  * Describes a single route.
@@ -27,12 +26,12 @@ export type ActionResult<T> = Promise<T | null | undefined> | T | null | undefin
  * @public
  * @interface
  */
-export type Route<T = unknown, R extends AnyObject = EmptyObject, C extends AnyObject = EmptyObject> = R &
+export type Route<T = unknown, R extends object = EmptyObject, C extends object = EmptyObject> = R &
   Readonly<{
     /**
      * Contains a list of nested routes.
      */
-    readonly children?: ReadonlyArray<Route<T, R, C>> | null;
+    readonly children?: ReadonlyArray<Route<T, R, C>>;
 
     /**
      * Represents a section of the URL specific to the current route. When
@@ -106,7 +105,7 @@ export type Route<T = unknown, R extends AnyObject = EmptyObject, C extends AnyO
      * after
      * ```
      */
-    action?(this: Route<T, R, C>, context: RouterContext<T, R, C>): ActionResult<T>;
+    action?(this: Route<T, R, C>, context: RouterContext<T, R, C>): MaybePromise<T | null | undefined>;
   }>;
 
 /**
@@ -115,7 +114,7 @@ export type Route<T = unknown, R extends AnyObject = EmptyObject, C extends AnyO
  * @public
  * @interface
  */
-export type RouterContext<T = unknown, R extends AnyObject = EmptyObject, C extends AnyObject = EmptyObject> = C &
+export type RouterContext<T = unknown, R extends object = EmptyObject, C extends object = EmptyObject> = C &
   Readonly<{
     /**
      * A sequence of routes connecting the root route to the resolved leaf
@@ -162,7 +161,7 @@ export type RouterContext<T = unknown, R extends AnyObject = EmptyObject, C exte
  *
  * @public
  */
-export interface RouterOptions<T = unknown, R extends AnyObject = EmptyObject, C extends AnyObject = EmptyObject> {
+export interface RouterOptions<T = unknown> {
   /**
    * The base URL against which all routes will be resolved. This option is
    * designed for applications hosted on URLs like the following:
@@ -176,23 +175,9 @@ export interface RouterOptions<T = unknown, R extends AnyObject = EmptyObject, C
   baseURL?: URL | string;
 
   /**
-   * Enables the use of old-style hash routing. When this option is enabled, all
-   * URLs will be resolved as follows:
-   *
-   * ```
-   * https://example.com/#/foo/bar
-   *                      ^ resolved route URL
-   * ```
-   *
-   * @defaultValue `false`
-   */
-  hash?: boolean;
-
-  /**
    * Invoked when an error is thrown during the resolution process.
    *
    * @remarks
-   *
    * This function is not called for 404 errors.
    *
    * @param error - The error thrown during the resolution.
@@ -201,7 +186,7 @@ export interface RouterOptions<T = unknown, R extends AnyObject = EmptyObject, C
    * @returns A result that will be delivered to the {@link Router.resolve}
    * method.
    */
-  errorHandler?(error: unknown, context: RouterContext<T, R, C>): ActionResult<T>;
+  errorHandler?(error: unknown): MaybePromise<T | null | undefined>;
 }
 
 /**
@@ -244,18 +229,17 @@ export class NotFoundError extends Error {
 /**
  * The main class that creates a router instance.
  *
- * @typeParam T - The type of value returned by the {@link Route.action}.
+ * @typeParam T - The type of value returned by the {@link Route#action}.
  * @typeParam R - An extension of the Route type that provides specific data.
  * @typeParam C - An extension of the {@link RouterContext} type that provides
  * specific data.
  *
  * @public
  */
-export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends AnyObject = EmptyObject> {
-  readonly #routes: ReadonlyArray<Route<T, R, C>>;
+export class Router<T = unknown, R extends object = EmptyObject, C extends object = EmptyObject> {
+  readonly routes: ReadonlyArray<Route<T, R, C>>;
+  readonly options: RouterOptions<T>;
   readonly #patterns = new Map<URLPattern, ReadonlyArray<Route<T, R, C>>>();
-  readonly #options: RouterOptions<T, R, C>;
-  readonly #baseURL: string;
 
   /**
    * Constructs a router instance.
@@ -263,41 +247,21 @@ export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends An
    * @param routes - The root route or a list of routes.
    * @param options - The optional parameter to customize the router behavior.
    */
-  constructor(routes: ReadonlyArray<Route<T, R, C>> | Route<T, R, C>, options: RouterOptions<T, R, C> = {}) {
-    this.#routes = Array.isArray(routes) ? routes : [routes];
-    this.#options = options;
-    this.#baseURL = String(this.#options.baseURL ?? location.origin);
+  constructor(routes: ReadonlyArray<Route<T, R, C>> | Route<T, R, C>, options: RouterOptions<T> = {}) {
+    this.routes = Array.isArray(routes) ? routes : [routes];
+    this.options = {
+      baseURL: location.origin,
+      ...options,
+    };
 
-    for (const branch of this.#traverse(this.#routes)) {
-      const route = branch.at(-1)!;
-
-      if (!route.children?.length) {
-        this.#patterns.set(
-          new URLPattern(
-            `${this.#options.hash ? '#/' : ''}${branch
-              .map((r) => r.path.replace(/^\/*(.*)\/*$/u, '$1'))
-              .filter(Boolean)
-              .join('/')}${this.#options.hash ? '' : '\\?*#*'}`,
-            this.#baseURL,
-          ),
-          branch,
-        );
-      }
+    for (const branch of this.#traverse(this.routes)) {
+      const url = branch
+        .map((r) => r.path.replace(/^\/*(.*?)\/*$/u, '$1'))
+        .filter((p) => p)
+        .join('/');
+      const pattern = new URLPattern(url, String(options.baseURL));
+      this.#patterns.set(pattern, branch);
     }
-  }
-
-  /**
-   * Gets the list of provided routes.
-   */
-  get routes(): ReadonlyArray<Route<T, R, C>> {
-    return this.#routes;
-  }
-
-  /**
-   * Gets the list of provided options.
-   */
-  get options(): RouterOptions<T, R, C> {
-    return this.#options;
   }
 
   /**
@@ -310,52 +274,53 @@ export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends An
    * Route. If `C` is not provided or is equal to {@link AnyObject}, providing
    * this parameter is forbidden.
    */
-  async resolve(path: URL | string): Promise<T | null | undefined>;
+  async resolve(path: URL): Promise<T | null | undefined>;
   // eslint-disable-next-line @typescript-eslint/unified-signatures
-  async resolve(path: URL | string, context: C extends EmptyObject ? never : C): Promise<T | null | undefined>;
-  async resolve(path: URL | string, context?: C): Promise<T | null | undefined> {
-    const url = new URL(path, this.#baseURL);
+  async resolve(path: URL, context: C extends EmptyObject ? never : C): Promise<T | null | undefined>;
+  async resolve(path: URL, context?: C): Promise<T | null | undefined> {
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const { errorHandler } = this.options;
+    const url = new URL(path, String(this.options.baseURL ?? location.origin));
 
-    const [result, branch] = this.#search(url);
-
+    const [result, branch] = this.#execute(url);
     const iter = branch.values();
 
-    const next = async (): Promise<T | null | undefined> => {
+    const ctx = {
+      ...context!,
+      branch,
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      next,
+      result,
+      router: this,
+      url,
+    };
+
+    async function next() {
       const { done, value } = iter.next();
 
       if (done) {
         return undefined;
       }
 
-      if (!value.action) {
-        return await next();
+      if (value.action) {
+        return await value.action(ctx);
       }
 
-      const routeCtx = {
-        ...context!,
-        branch,
-        next,
-        result,
-        router: this,
-        url,
-      };
+      return await next();
+    }
 
-      try {
-        return await value.action(routeCtx);
-      } catch (error: unknown) {
-        if (this.#options.errorHandler) {
-          return await this.#options.errorHandler(error, routeCtx);
-        }
-
-        throw error;
+    try {
+      return await next();
+    } catch (error: unknown) {
+      if (errorHandler) {
+        return await errorHandler(error);
       }
-    };
 
-    // eslint-disable-next-line no-await-in-loop
-    return await next();
+      throw error;
+    }
   }
 
-  #search(url: URL): readonly [URLPatternResult, ReadonlyArray<Route<T, R, C>>] {
+  #execute(url: URL): readonly [URLPatternResult, ReadonlyArray<Route<T, R, C>>] {
     for (const [pattern, branch] of this.#patterns) {
       const result = pattern.exec(url);
 
@@ -374,10 +339,10 @@ export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends An
     for (const route of routes) {
       const chain = [...parents, route];
 
-      yield chain;
-
       if (route.children) {
         yield* this.#traverse(route.children, chain);
+      } else {
+        yield chain;
       }
     }
   }
