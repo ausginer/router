@@ -41,8 +41,9 @@ export function navigate<C extends object = EmptyObject>(path: URL | string, con
  * listener. It supports all the parameters of {@link https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener | addEventListener}
  * function.
  */
+export function addNavigationListener(listener: (path: URL) => void, options?: AddEventListenerOptions): void;
 export function addNavigationListener<C extends object = EmptyObject>(
-  listener: C extends EmptyObject ? (path: URL) => void : (path: URL, context: C) => void,
+  listener: (path: URL, context: C extends EmptyObject ? never : C) => void,
   options?: AddEventListenerOptions,
 ): void;
 export function addNavigationListener<C extends object = EmptyObject>(

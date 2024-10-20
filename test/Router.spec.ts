@@ -277,31 +277,6 @@ describe('Router', () => {
       const [error] = errorHandler.firstCall.args;
       expect(error).to.be.instanceOf(CustomError);
     });
-
-    it('allows catching the NotFoundError with the custom error handler', async () => {
-      const errorHandler = sinon.spy();
-
-      const router = new Router<string>(
-        {
-          children: [
-            {
-              path: '/bar',
-            },
-          ],
-          path: '/foo',
-        },
-        {
-          errorHandler,
-        },
-      );
-
-      await router.resolve(new URL('/foo/wrong/path', BASE_PATH));
-
-      expect(errorHandler).to.be.calledOnce;
-
-      const [error] = errorHandler.firstCall.args;
-      expect(error).to.be.instanceOf(NotFoundError);
-    });
   });
 
   describe('Router#resolve', () => {

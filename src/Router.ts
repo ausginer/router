@@ -31,7 +31,7 @@ export type Route<T = unknown, R extends object = EmptyObject, C extends object 
     /**
      * Contains a list of nested routes.
      */
-    readonly children?: ReadonlyArray<Route<T, R, C>> | null;
+    readonly children?: ReadonlyArray<Route<T, R, C>>;
 
     /**
      * Represents a section of the URL specific to the current route. When
@@ -178,7 +178,6 @@ export interface RouterOptions<T = unknown> {
    * Invoked when an error is thrown during the resolution process.
    *
    * @remarks
-   *
    * This function is not called for 404 errors.
    *
    * @param error - The error thrown during the resolution.
@@ -230,7 +229,7 @@ export class NotFoundError extends Error {
 /**
  * The main class that creates a router instance.
  *
- * @typeParam T - The type of value returned by the {@link Route.action}.
+ * @typeParam T - The type of value returned by the {@link Route#action}.
  * @typeParam R - An extension of the Route type that provides specific data.
  * @typeParam C - An extension of the {@link RouterContext} type that provides
  * specific data.
@@ -238,10 +237,9 @@ export class NotFoundError extends Error {
  * @public
  */
 export class Router<T = unknown, R extends object = EmptyObject, C extends object = EmptyObject> {
-  readonly #routes: ReadonlyArray<Route<T, R, C>>;
+  readonly routes: ReadonlyArray<Route<T, R, C>>;
+  readonly options: RouterOptions<T>;
   readonly #patterns = new Map<URLPattern, ReadonlyArray<Route<T, R, C>>>();
-  readonly #options: RouterOptions<T>;
-  readonly #baseURL: string;
 
   /**
    * Constructs a router instance.
@@ -250,33 +248,20 @@ export class Router<T = unknown, R extends object = EmptyObject, C extends objec
    * @param options - The optional parameter to customize the router behavior.
    */
   constructor(routes: ReadonlyArray<Route<T, R, C>> | Route<T, R, C>, options: RouterOptions<T> = {}) {
-    this.#routes = Array.isArray(routes) ? routes : [routes];
-    this.#options = options;
-    this.#baseURL = String(this.#options.baseURL ?? location.origin);
+    this.routes = Array.isArray(routes) ? routes : [routes];
+    this.options = {
+      baseURL: location.origin,
+      ...options,
+    };
 
-    for (const branch of this.#traverse(this.#routes)) {
+    for (const branch of this.#traverse(this.routes)) {
       const url = branch
         .map((r) => r.path.replace(/^\/*(.*?)\/*$/u, '$1'))
-        .filter(Boolean)
+        .filter((p) => p)
         .join('/');
-      const pattern = new URLPattern(url, this.#baseURL);
-
+      const pattern = new URLPattern(url, String(options.baseURL));
       this.#patterns.set(pattern, branch);
     }
-  }
-
-  /**
-   * Gets the list of provided routes.
-   */
-  get routes(): ReadonlyArray<Route<T, R, C>> {
-    return this.#routes;
-  }
-
-  /**
-   * Gets the list of provided options.
-   */
-  get options(): RouterOptions<T> {
-    return this.#options;
   }
 
   /**
@@ -293,11 +278,22 @@ export class Router<T = unknown, R extends object = EmptyObject, C extends objec
   // eslint-disable-next-line @typescript-eslint/unified-signatures
   async resolve(path: URL, context: C extends EmptyObject ? never : C): Promise<T | null | undefined>;
   async resolve(path: URL, context?: C): Promise<T | null | undefined> {
-    const options = this.#options;
-    const url = new URL(path, this.#baseURL);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const { errorHandler } = this.options;
+    const url = new URL(path, String(this.options.baseURL ?? location.origin));
 
-    let iter: IterableIterator<Route<T, R, C>>;
-    let ctx: RouterContext<T, R, C>;
+    const [result, branch] = this.#execute(url);
+    const iter = branch.values();
+
+    const ctx = {
+      ...context!,
+      branch,
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      next,
+      result,
+      router: this,
+      url,
+    };
 
     async function next() {
       const { done, value } = iter.next();
@@ -314,30 +310,17 @@ export class Router<T = unknown, R extends object = EmptyObject, C extends objec
     }
 
     try {
-      const [result, branch] = this.#search(url);
-
-      iter = branch.values();
-
-      ctx = {
-        ...context!,
-        branch,
-        next,
-        result,
-        router: this,
-        url,
-      };
-
       return await next();
     } catch (error: unknown) {
-      if (options.errorHandler) {
-        return await options.errorHandler(error);
+      if (errorHandler) {
+        return await errorHandler(error);
       }
 
       throw error;
     }
   }
 
-  #search(url: URL): readonly [URLPatternResult, ReadonlyArray<Route<T, R, C>>] {
+  #execute(url: URL): readonly [URLPatternResult, ReadonlyArray<Route<T, R, C>>] {
     for (const [pattern, branch] of this.#patterns) {
       const result = pattern.exec(url);
 
@@ -356,7 +339,7 @@ export class Router<T = unknown, R extends object = EmptyObject, C extends objec
     for (const route of routes) {
       const chain = [...parents, route];
 
-      if (route.children?.length) {
+      if (route.children) {
         yield* this.#traverse(route.children, chain);
       } else {
         yield chain;
