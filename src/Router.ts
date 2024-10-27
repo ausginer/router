@@ -169,6 +169,9 @@ export interface RouterOptions<T = unknown> {
    * ```
    * https://example.com/path/to/my/root
    * ```
+   * @remarks
+   * It doesn't consider URLs from the `<base>` tag. If you use it, you should
+   * provide the base URL manually.
    *
    * @defaultValue `window.location.origin`
    */
@@ -229,7 +232,7 @@ export class NotFoundError extends Error {
 /**
  * The main class that creates a router instance.
  *
- * @typeParam T - The type of value returned by the {@link Route#action}.
+ * @typeParam T - The type of value returned by the {@link Route.action}.
  * @typeParam R - An extension of the Route type that provides specific data.
  * @typeParam C - An extension of the {@link RouterContext} type that provides
  * specific data.
@@ -237,8 +240,29 @@ export class NotFoundError extends Error {
  * @public
  */
 export class Router<T = unknown, R extends object = EmptyObject, C extends object = EmptyObject> {
+  /**
+   * {@inheritdoc RouterOptions.baseURL}
+   */
+  readonly baseURL: URL;
+  /**
+   * A list of routes that are used to resolve the URL.
+   */
   readonly routes: ReadonlyArray<Route<T, R, C>>;
-  readonly options: RouterOptions<T>;
+
+  /**
+   * The error handler that is invoked when an error is thrown during the
+   * resolution process.
+   *
+   * @internal
+   */
+  readonly #errorHandler?: (error: unknown) => MaybePromise<T | null | undefined>;
+
+  /**
+   * Contains a map of URL patterns and the {@link RouterContext.branch | route branches}
+   * associated with them.
+   *
+   * @internal
+   */
   readonly #patterns = new Map<URLPattern, ReadonlyArray<Route<T, R, C>>>();
 
   /**
@@ -246,20 +270,25 @@ export class Router<T = unknown, R extends object = EmptyObject, C extends objec
    *
    * @param routes - The root route or a list of routes.
    * @param options - The optional parameter to customize the router behavior.
+   * Can also be another router instance to create a new router based on the
+   * existing one.
    */
-  constructor(routes: ReadonlyArray<Route<T, R, C>> | Route<T, R, C>, options: RouterOptions<T> = {}) {
+  constructor(
+    routes: ReadonlyArray<Route<T, R, C>> | Route<T, R, C>,
+    optionsOrRouter: RouterOptions<T> | Router<T, R, C> = {},
+  ) {
     this.routes = Array.isArray(routes) ? routes : [routes];
-    this.options = {
-      baseURL: location.origin,
-      ...options,
-    };
+    this.baseURL = new URL(optionsOrRouter.baseURL ?? '', location.origin);
+    this.#errorHandler =
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      optionsOrRouter instanceof Router ? optionsOrRouter.#errorHandler : optionsOrRouter.errorHandler;
 
     for (const branch of this.#traverse(this.routes)) {
       const url = branch
         .map((r) => r.path.replace(/^\/*(.*?)\/*$/u, '$1'))
         .filter((p) => p)
         .join('/');
-      const pattern = new URLPattern(url, String(options.baseURL));
+      const pattern = new URLPattern(url, String(this.baseURL));
       this.#patterns.set(pattern, branch);
     }
   }
@@ -278,9 +307,7 @@ export class Router<T = unknown, R extends object = EmptyObject, C extends objec
   // eslint-disable-next-line @typescript-eslint/unified-signatures
   async resolve(path: URL, context: C extends EmptyObject ? never : C): Promise<T | null | undefined>;
   async resolve(path: URL, context?: C): Promise<T | null | undefined> {
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    const { errorHandler } = this.options;
-    const url = new URL(path, String(this.options.baseURL ?? location.origin));
+    const url = new URL(path, this.baseURL);
 
     const [result, branch] = this.#execute(url);
     const iter = branch.values();
@@ -312,14 +339,22 @@ export class Router<T = unknown, R extends object = EmptyObject, C extends objec
     try {
       return await next();
     } catch (error: unknown) {
-      if (errorHandler) {
-        return await errorHandler(error);
+      if (this.#errorHandler) {
+        return await this.#errorHandler(error);
       }
 
       throw error;
     }
   }
 
+  /**
+   * Resolves the provided path based on the established routes and finds the
+   * appropriate {@link RouterContext.branch | route branch}.
+   *
+   * @param url - The URL to be resolved.
+   * @returns - A tuple containing the result of the URL pattern matching and
+   * the {@link RouterContext.branch | route branch} associated with the URL.
+   */
   #execute(url: URL): readonly [URLPatternResult, ReadonlyArray<Route<T, R, C>>] {
     for (const [pattern, branch] of this.#patterns) {
       const result = pattern.exec(url);
@@ -332,6 +367,12 @@ export class Router<T = unknown, R extends object = EmptyObject, C extends objec
     throw new NotFoundError(url);
   }
 
+  /**
+   * Traverses the routes tree and yields all possible {@link RouterContext.branch | branches}.
+   *
+   * @param routes - The list of routes to traverse.
+   * @param parents - The incomplete {@link RouterContext.branch | branches}.
+   */
   *#traverse(
     routes: ReadonlyArray<Route<T, R, C>>,
     parents: ReadonlyArray<Route<T, R, C>> = [],

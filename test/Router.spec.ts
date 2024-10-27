@@ -265,9 +265,7 @@ describe('Router', () => {
           ],
           path: '/foo',
         },
-        {
-          errorHandler,
-        },
+        { errorHandler },
       );
 
       await router.resolve(new URL('/foo/bar', BASE_PATH));
