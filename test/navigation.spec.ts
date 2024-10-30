@@ -21,38 +21,61 @@ describe('Navigation', () => {
       dispatchEvent(new PopStateEvent('popstate'));
     });
 
-    it('navigates to the specified URL', (done) => {
+    it('navigates to the specified URL', async () => {
       const url = new URL('/foo', BASE_PATH);
-      addEventListener(
-        'popstate',
-        () => {
-          expect(history.state).to.include({ context: undefined, path: url.toString() });
-          expect(location.href).to.equal(url.toString());
-          done();
-        },
-        { once: true },
-      );
 
-      navigate(url);
+      return await new Promise<void>((resolve) => {
+        addEventListener(
+          'popstate',
+          () => {
+            expect(history.state).to.include({ context: undefined, path: url.toString() });
+            expect(location.href).to.equal(url.toString());
+            resolve();
+          },
+          { once: true },
+        );
+
+        navigate(url.toString());
+      });
     });
 
-    it('restores the context on history#back', (done) => {
+    it('propagates the navigation context via event', async () => {
+      const url = new URL('/foo', BASE_PATH);
+      const ctx = { foo: 'bar' };
+      return await new Promise<void>((resolve) => {
+        addEventListener(
+          'popstate',
+          () => {
+            expect((history.state as HistoryState<typeof ctx>).context).to.equal(ctx);
+            resolve();
+          },
+          { once: true },
+        );
+
+        navigate(url, ctx);
+      });
+    });
+
+    it('restores the context on history#back', async () => {
       const url = new URL('/foo', BASE_PATH);
       const ctx = { foo: 'bar' };
       navigate(url, ctx);
       navigate(new URL('/bar', BASE_PATH));
-      addEventListener(
-        'popstate',
-        () => {
-          // History serializes object to store it, so the recovered object cannot be
-          // strictly equal to the original one.
-          expect((history.state as HistoryState<typeof ctx>).context).to.deep.equal(ctx);
-          done();
-        },
-        { once: true },
-      );
 
-      history.back();
+      return await new Promise<void>((resolve) => {
+        addEventListener(
+          'popstate',
+          () => {
+            // History serializes object to store it, so the recovered object cannot be
+            // strictly equal to the original one.
+            expect((history.state as HistoryState<typeof ctx>).context).to.deep.equal(ctx);
+            resolve();
+          },
+          { once: true },
+        );
+
+        history.back();
+      });
     });
   });
 
