@@ -1,10 +1,12 @@
 import { expect, use } from '@esm-bundle/chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
+import sinonChai from 'sinon-chai';
 import { Router, NotFoundError } from '../src/Router.js';
 import type { AnyObject } from '../src/types.js';
 
 use(chaiAsPromised);
+use(sinonChai);
 
 describe('Router', () => {
   const BASE_PATH = location.origin;
