@@ -1,6 +1,6 @@
 // eslint-disable-next-line
 /// <reference types="urlpattern-polyfill" />
-import type { EmptyObject } from 'type-fest';
+import type { EmptyObject, StructuredCloneable } from 'type-fest';
 
 /**
  * Describes the value that could be either be a promise or a plain value.
@@ -26,7 +26,11 @@ export type MaybePromise<T> = T | Promise<T>;
  * @public
  * @interface
  */
-export type Route<T = unknown, R extends object = EmptyObject, C extends object = EmptyObject> = R &
+export type Route<
+  T = unknown,
+  R extends object = EmptyObject,
+  C extends object & StructuredCloneable = EmptyObject,
+> = R &
   Readonly<{
     /**
      * Contains a list of nested routes.
@@ -114,7 +118,11 @@ export type Route<T = unknown, R extends object = EmptyObject, C extends object 
  * @public
  * @interface
  */
-export type RouterContext<T = unknown, R extends object = EmptyObject, C extends object = EmptyObject> = C &
+export type RouterContext<
+  T = unknown,
+  R extends object = EmptyObject,
+  C extends object & StructuredCloneable = EmptyObject,
+> = C &
   Readonly<{
     /**
      * A sequence of routes connecting the root route to the resolved leaf
@@ -239,7 +247,7 @@ export class NotFoundError extends Error {
  *
  * @public
  */
-export class Router<T = unknown, R extends object = EmptyObject, C extends object = EmptyObject> {
+export class Router<T = unknown, R extends object = EmptyObject, C extends object & StructuredCloneable = EmptyObject> {
   /**
    * {@inheritdoc RouterOptions.baseURL}
    */
@@ -278,7 +286,7 @@ export class Router<T = unknown, R extends object = EmptyObject, C extends objec
     optionsOrRouter: RouterOptions<T> | Router<T, R, C> = {},
   ) {
     this.routes = Array.isArray(routes) ? routes : [routes];
-    this.baseURL = new URL(optionsOrRouter.baseURL ?? '', location.origin);
+    this.baseURL = new URL(optionsOrRouter.baseURL ?? '', document.baseURI);
     this.#errorHandler =
       // eslint-disable-next-line @typescript-eslint/unbound-method
       optionsOrRouter instanceof Router ? optionsOrRouter.#errorHandler : optionsOrRouter.errorHandler;
@@ -303,10 +311,10 @@ export class Router<T = unknown, R extends object = EmptyObject, C extends objec
    * Route. If `C` is not provided or is equal to {@link AnyObject}, providing
    * this parameter is forbidden.
    */
-  async resolve(path: URL): Promise<T | null | undefined>;
+  async resolve(path: URL | string): Promise<T | null | undefined>;
   // eslint-disable-next-line @typescript-eslint/unified-signatures
-  async resolve(path: URL, context: C extends EmptyObject ? never : C): Promise<T | null | undefined>;
-  async resolve(path: URL, context?: C): Promise<T | null | undefined> {
+  async resolve(path: URL | string, context: C extends EmptyObject ? never : C): Promise<T | null | undefined>;
+  async resolve(path: URL | string, context?: C): Promise<T | null | undefined> {
     const url = new URL(path, this.baseURL);
 
     const [result, branch] = this.#execute(url);

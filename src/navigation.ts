@@ -1,9 +1,6 @@
-import type { EmptyObject } from 'type-fest';
+import type { EmptyObject, StructuredCloneable } from 'type-fest';
 
-type HistoryState<C extends object = EmptyObject> = Readonly<{
-  context?: C;
-  path: URL | string;
-}>;
+export type HistoryState<C> = Readonly<{ path: string; context?: C }>;
 
 /**
  * Changes the current URL and notifies the application using the `popstate`
@@ -21,12 +18,12 @@ type HistoryState<C extends object = EmptyObject> = Readonly<{
  * has changed.
  */
 export function navigate(path: URL | string): void;
-export function navigate<C extends object = EmptyObject>(
+export function navigate<C extends object & StructuredCloneable = EmptyObject>(
   path: URL | string,
   context: C extends EmptyObject ? never : C,
 ): void;
-export function navigate<C extends object = EmptyObject>(path: URL | string, context?: C): void {
-  history.pushState({ context, path: path.toString() }, '', path);
+export function navigate<C extends object & StructuredCloneable = EmptyObject>(path: URL | string, context?: C): void {
+  history.pushState({ path: path.toString(), context }, '', path);
   dispatchEvent(new PopStateEvent('popstate'));
 }
 
@@ -41,20 +38,20 @@ export function navigate<C extends object = EmptyObject>(path: URL | string, con
  * listener. It supports all the parameters of {@link https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener | addEventListener}
  * function.
  */
-export function addNavigationListener(listener: (path: URL) => void, options?: AddEventListenerOptions): void;
-export function addNavigationListener<C extends object = EmptyObject>(
-  listener: (path: URL, context: C extends EmptyObject ? never : C) => void,
+export function addNavigationListener(listener: (path: string) => void, options?: AddEventListenerOptions): void;
+export function addNavigationListener<C extends object & StructuredCloneable = EmptyObject>(
+  listener: (path: string, context: C extends EmptyObject ? never : C) => void,
   options?: AddEventListenerOptions,
 ): void;
-export function addNavigationListener<C extends object = EmptyObject>(
-  listener: (path: URL, context?: C) => void,
+export function addNavigationListener<C extends object & StructuredCloneable = EmptyObject>(
+  listener: (path: string, context?: C) => void,
   options?: AddEventListenerOptions,
 ): void {
   addEventListener(
     'popstate',
     () => {
-      const { context, path } = history.state as HistoryState<C>;
-      listener(new URL(path), context);
+      const { path, context } = history.state as HistoryState<C>;
+      listener(path, context);
     },
     options,
   );
