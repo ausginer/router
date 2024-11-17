@@ -1,15 +1,7 @@
 // eslint-disable-next-line
 /// <reference types="urlpattern-polyfill" />
-import type { EmptyObject, StructuredCloneable } from 'type-fest';
-
-/**
- * Describes the value that could be either be a promise or a plain value.
- *
- * @typeParam T - The type of value.
- *
- * @public
- */
-export type MaybePromise<T> = T | Promise<T>;
+import type { EmptyObject } from 'type-fest';
+import type { MaybePromise, StructuredCloneableObject } from './types.js';
 
 /**
  * Describes a single route.
@@ -20,17 +12,14 @@ export type MaybePromise<T> = T | Promise<T>;
  *
  * @typeParam T - The type of value returned by the {@link Route.action}.
  * @typeParam R - An extension for the Route type to provide specific data.
- * @typeParam C - An extension for the {@link RouterContext} type to provide
- * specific data.
+ * @typeParam C - An extension of the {@link RouterContext} type that provides
+ * specific data. The data should be
+ * {@link https://developer.mozilla.org/en-US/docs/Glossary/Serializable_object | serializable}
  *
  * @public
  * @interface
  */
-export type Route<
-  T = unknown,
-  R extends object = EmptyObject,
-  C extends object & StructuredCloneable = EmptyObject,
-> = R &
+export type Route<T = unknown, R extends object = EmptyObject, C extends StructuredCloneableObject = EmptyObject> = R &
   Readonly<{
     /**
      * Contains a list of nested routes.
@@ -121,7 +110,7 @@ export type Route<
 export type RouterContext<
   T = unknown,
   R extends object = EmptyObject,
-  C extends object & StructuredCloneable = EmptyObject,
+  C extends StructuredCloneableObject = EmptyObject,
 > = C &
   Readonly<{
     /**
@@ -165,7 +154,8 @@ export type RouterContext<
  * @typeParam T - The type of value returned by the {@link Route.action}.
  * @typeParam R - An extension of the Route type that provides specific data.
  * @typeParam C - An extension of the {@link RouterContext} type that provides
- * specific data.
+ * specific data. The data should be
+ * {@link https://developer.mozilla.org/en-US/docs/Glossary/Serializable_object | serializable}
  *
  * @public
  */
@@ -192,7 +182,6 @@ export interface RouterOptions<T = unknown> {
    * This function is not called for 404 errors.
    *
    * @param error - The error thrown during the resolution.
-   * @param context - The context of the current resolution.
    *
    * @returns A result that will be delivered to the {@link Router.resolve}
    * method.
@@ -243,13 +232,14 @@ export class NotFoundError extends Error {
  * @typeParam T - The type of value returned by the {@link Route.action}.
  * @typeParam R - An extension of the Route type that provides specific data.
  * @typeParam C - An extension of the {@link RouterContext} type that provides
- * specific data.
+ * specific data. The data should be
+ * {@link https://developer.mozilla.org/en-US/docs/Glossary/Serializable_object | serializable}
  *
  * @public
  */
-export class Router<T = unknown, R extends object = EmptyObject, C extends object & StructuredCloneable = EmptyObject> {
+export class Router<T = unknown, R extends object = EmptyObject, C extends StructuredCloneableObject = EmptyObject> {
   /**
-   * {@inheritdoc RouterOptions.baseURL}
+   * {@inheritDoc RouterOptions.baseURL}
    */
   readonly baseURL: URL;
   /**
@@ -277,9 +267,9 @@ export class Router<T = unknown, R extends object = EmptyObject, C extends objec
    * Constructs a router instance.
    *
    * @param routes - The root route or a list of routes.
-   * @param options - The optional parameter to customize the router behavior.
-   * Can also be another router instance to create a new router based on the
-   * existing one.
+   * @param optionsOrRouter - The optional parameter to customize the router
+   * behavior. Can also be another router instance to create a new router based
+   * on the existing one.
    */
   constructor(
     routes: ReadonlyArray<Route<T, R, C>> | Route<T, R, C>,
@@ -306,12 +296,18 @@ export class Router<T = unknown, R extends object = EmptyObject, C extends objec
    *
    * @param path - The path to be resolved. It can be either an absolute URL
    * or a string path relative to the {@link RouterOptions.baseURL}.
-   * @param context - Any data that needs to be sent to {@link Route.action}.
-   * The type of this parameter should match the `C` type parameter of the
-   * Route. If `C` is not provided or is equal to {@link AnyObject}, providing
-   * this parameter is forbidden.
    */
   async resolve(path: URL | string): Promise<T | null | undefined>;
+  /**
+   * Resolves the provided path based on the established routes.
+   *
+   * @param path - The path to be resolved. It can be either an absolute URL
+   * or a string path relative to the {@link RouterOptions.baseURL}.
+   * @param context - Any data that needs to be sent to {@link Route.action}.
+   * The type of this parameter should match the `C` type parameter of the
+   * Route. If `C` is not provided or is equal to {@link EmptyObject}, providing
+   * this parameter is forbidden.
+   */
   // eslint-disable-next-line @typescript-eslint/unified-signatures
   async resolve(path: URL | string, context: C extends EmptyObject ? never : C): Promise<T | null | undefined>;
   async resolve(path: URL | string, context?: C): Promise<T | null | undefined> {

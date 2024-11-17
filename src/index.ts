@@ -5,3 +5,4 @@ if (!('URLPattern' in globalThis)) {
 export type { EmptyObject } from 'type-fest';
 export * from './navigation.js';
 export * from './Router.js';
+export type * from './types.js';

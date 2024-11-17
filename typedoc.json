@@ -4,8 +4,6 @@
   "excludePrivate": true,
   "out": ".docs",
   "sort": ["source-order"],
-  "plugin": ["@mxssfd/typedoc-theme"],
-  "theme": "my-theme",
   "tsconfig": "tsconfig.build.json",
   "useTsLinkResolution": false,
   "validation": {
