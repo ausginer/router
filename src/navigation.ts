@@ -50,31 +50,6 @@ export function navigate<C extends StructuredCloneableObject = EmptyObject>(path
 }
 
 /**
- * The listener callback.
- *
- * @param path - The path to navigate to.
- */
-export type NavigationListener = (path: string) => void;
-
-/**
- * The listener callback.
- *
- * @typeParam C - The type of the context data. It should be
- * {@link https://developer.mozilla.org/en-US/docs/Glossary/Serializable_object | serializable}
- * and match the `C` type parameter of the {@link Router}.
- *
- * @param path - The path to navigate to.
- * @param context - Any data that needs to be sent to {@link Route.action}.
- * The type of this parameter should match the generic `C`. If `C` is not
- * provided or is equal to {@link EmptyObject}, providing this parameter is
- * forbidden.
- */
-export type NavigationListenerWithContext<C extends StructuredCloneableObject = EmptyObject> = (
-  path: string,
-  context: C extends EmptyObject ? never : C,
-) => void;
-
-/**
  * Adds a listener to the `popstate` event executed each time the event is
  * fired. This function is designed to be used in conjunction with the {@link Router.resolve}
  * method.
