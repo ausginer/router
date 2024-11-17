@@ -305,7 +305,7 @@ export class Router<T = unknown, R extends object = EmptyObject, C extends Struc
    * or a string path relative to the {@link RouterOptions.baseURL}.
    * @param context - Any data that needs to be sent to {@link Route.action}.
    * The type of this parameter should match the `C` type parameter of the
-   * Route. If `C` is not provided or is equal to {@link EmptyObject}, providing
+   * Route. If `C` is not provided or is equal to {@link EmptyObject}, setting
    * this parameter is forbidden.
    */
   // eslint-disable-next-line @typescript-eslint/unified-signatures
