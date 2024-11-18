@@ -3,7 +3,6 @@ import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 import { Router, NotFoundError } from '../src/Router.js';
-import type { AnyObject } from '../src/types.js';
 
 use(chaiAsPromised);
 use(sinonChai);
@@ -22,7 +21,7 @@ describe('Router', () => {
         path: '/foo',
       });
 
-      const actual = await router.resolve('/foo');
+      const actual = await router.resolve(new URL('/foo', BASE_PATH));
       expect(actual).to.equal(expected);
     });
 
@@ -54,13 +53,13 @@ describe('Router', () => {
         },
       ]);
 
-      let actual = await router.resolve('/foo/a100');
+      let actual = await router.resolve(new URL('/foo/a100', BASE_PATH));
       expect(actual).to.equal('Foo--a100');
 
-      actual = await router.resolve('/bar/124');
+      actual = await router.resolve(new URL('/bar/124', BASE_PATH));
       expect(actual).to.equal('Bar--124');
 
-      await expect(router.resolve('/bar/a100')).to.be.rejectedWith(NotFoundError);
+      await expect(router.resolve(new URL('/bar/a100', BASE_PATH))).to.be.rejectedWith(NotFoundError);
     });
 
     it('allows creating non-middleware page with children', async () => {
@@ -82,7 +81,10 @@ describe('Router', () => {
         path: '/foo',
       });
 
-      const [result1, result2] = await Promise.all([router.resolve('/foo'), router.resolve('/foo/bar')]);
+      const [result1, result2] = await Promise.all([
+        router.resolve(new URL('/foo', BASE_PATH)),
+        router.resolve(new URL('/foo/bar', BASE_PATH)),
+      ]);
 
       expect(result1).to.equal('Foo');
       expect(result2).to.equal('Bar');
@@ -104,7 +106,7 @@ describe('Router', () => {
         path: '/foo',
       });
 
-      const actual = await router.resolve('/foo/bar');
+      const actual = await router.resolve(new URL('/foo/bar', BASE_PATH));
       expect(actual).to.equal('Foo--Bar--Baz');
     });
 
@@ -128,10 +130,10 @@ describe('Router', () => {
         path: '/',
       });
 
-      let result = await router.resolve('/protected');
+      let result = await router.resolve(new URL('/protected', BASE_PATH));
       expect(result).to.equal('Authentication required');
 
-      result = await router.resolve('/protected?authenticated=true');
+      result = await router.resolve(new URL('/protected?authenticated=true', BASE_PATH));
       expect(result).to.equal('Hi, User');
     });
 
@@ -159,7 +161,7 @@ describe('Router', () => {
         requiresLogin: true,
       });
 
-      const result = await router.resolve('/protected');
+      const result = await router.resolve(new URL('/protected', BASE_PATH));
       expect(result).to.equal('Foo-Bar|{"child":"undefined","parent":true}');
     });
 
@@ -175,7 +177,7 @@ describe('Router', () => {
         ],
         path: '/foo',
       });
-      const result = await router.resolve('/foo/bar');
+      const result = await router.resolve(new URL('/foo/bar', BASE_PATH));
       expect(result).to.equal('Bar');
     });
 
@@ -184,7 +186,7 @@ describe('Router', () => {
         path: '/foo',
       });
 
-      const result = await router.resolve('/foo');
+      const result = await router.resolve(new URL('/foo', BASE_PATH));
       expect(result).to.be.undefined;
     });
   });
@@ -210,14 +212,14 @@ describe('Router', () => {
     });
 
     it('throws an error if the path cannot be associated', async () => {
-      const router = new Router<string, AnyObject>({
+      const router = new Router<string, object>({
         action() {
           return 'Foo';
         },
         path: '/foo',
       });
 
-      await expect(router.resolve('/bar')).to.rejectedWith(NotFoundError);
+      await expect(router.resolve(new URL('/bar', BASE_PATH))).to.rejectedWith(NotFoundError);
     });
 
     it('it does not throw an error if there is a catching route', async () => {
@@ -244,17 +246,16 @@ describe('Router', () => {
         },
       ]);
 
-      const result = await router.resolve('/bar');
+      const result = await router.resolve(new URL('/bar', BASE_PATH));
       expect(result).to.equal('404');
     });
 
     it('allows setting a custom error handler', async () => {
-      type Context = { data: string };
       class CustomError extends Error {}
 
       const errorHandler = sinon.spy();
 
-      const router = new Router<string, AnyObject, Context>(
+      const router = new Router<string>(
         {
           children: [
             {
@@ -266,36 +267,15 @@ describe('Router', () => {
           ],
           path: '/foo',
         },
-        {
-          errorHandler,
-        },
+        { errorHandler },
       );
 
-      await router.resolve('/foo/bar', { data: 'foo' });
+      await router.resolve(new URL('/foo/bar', BASE_PATH));
 
       expect(errorHandler).to.be.calledOnce;
 
-      const [error, context] = errorHandler.firstCall.args;
-      expect(context).to.be.an('object');
-      expect(context).to.have.keys(['branch', 'data', 'next', 'result', 'router', 'url']);
+      const [error] = errorHandler.firstCall.args;
       expect(error).to.be.instanceOf(CustomError);
-    });
-
-    it('allows using hash instead of the full URL', async () => {
-      const router = new Router(
-        [
-          {
-            action() {
-              return `Foo`;
-            },
-            path: '/foo',
-          },
-        ],
-        { hash: true },
-      );
-
-      const result = await router.resolve('#/foo');
-      expect(result).to.equal('Foo');
     });
   });
 
@@ -303,17 +283,17 @@ describe('Router', () => {
     it('allows receiving context in actions', async () => {
       type Context = Readonly<{ data: string }>;
 
-      const router = new Router<string, AnyObject, Context>({
+      const router = new Router<string, object, Context>({
         action({ data }) {
           return `Foo--${data}`;
         },
         path: '/foo',
       });
 
-      let actual = await router.resolve('/foo', { data: 'CTX' });
+      let actual = await router.resolve(new URL('/foo', BASE_PATH), { data: 'CTX' });
       expect(actual).to.equal('Foo--CTX');
 
-      actual = await router.resolve('/foo', { data: 'XTC' });
+      actual = await router.resolve(new URL('/foo', BASE_PATH), { data: 'XTC' });
       expect(actual).to.equal('Foo--XTC');
     });
   });

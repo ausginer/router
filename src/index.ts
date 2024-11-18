@@ -2,6 +2,7 @@ if (!('URLPattern' in globalThis)) {
   await import('urlpattern-polyfill');
 }
 
+export type { EmptyObject } from 'type-fest';
 export * from './navigation.js';
 export * from './Router.js';
-export type { AnyObject, EmptyObject } from './types.js';
+export type * from './types.js';

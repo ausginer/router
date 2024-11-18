@@ -1,16 +1,7 @@
 // eslint-disable-next-line
 /// <reference types="urlpattern-polyfill" />
-import type { AnyObject, EmptyObject } from './types.js';
-
-/**
- * Describes the result of the {@link Route.action}. It can be either a
- * `Promise` or a plain value.
- *
- * @typeParam T - The type of value returned by the action.
- *
- * @public
- */
-export type ActionResult<T> = Promise<T | null | undefined> | T | null | undefined;
+import type { EmptyObject } from 'type-fest';
+import type { MaybePromise, StructuredCloneableObject } from './types.js';
 
 /**
  * Describes a single route.
@@ -21,18 +12,19 @@ export type ActionResult<T> = Promise<T | null | undefined> | T | null | undefin
  *
  * @typeParam T - The type of value returned by the {@link Route.action}.
  * @typeParam R - An extension for the Route type to provide specific data.
- * @typeParam C - An extension for the {@link RouterContext} type to provide
- * specific data.
+ * @typeParam C - An extension of the {@link RouterContext} type that provides
+ * specific data. The data should be
+ * {@link https://developer.mozilla.org/en-US/docs/Glossary/Serializable_object | serializable}
  *
  * @public
  * @interface
  */
-export type Route<T = unknown, R extends AnyObject = EmptyObject, C extends AnyObject = EmptyObject> = R &
+export type Route<T = unknown, R extends object = EmptyObject, C extends StructuredCloneableObject = EmptyObject> = R &
   Readonly<{
     /**
      * Contains a list of nested routes.
      */
-    readonly children?: ReadonlyArray<Route<T, R, C>> | null;
+    readonly children?: ReadonlyArray<Route<T, R, C>>;
 
     /**
      * Represents a section of the URL specific to the current route. When
@@ -106,7 +98,7 @@ export type Route<T = unknown, R extends AnyObject = EmptyObject, C extends AnyO
      * after
      * ```
      */
-    action?(this: Route<T, R, C>, context: RouterContext<T, R, C>): ActionResult<T>;
+    action?(this: Route<T, R, C>, context: RouterContext<T, R, C>): MaybePromise<T | null | undefined>;
   }>;
 
 /**
@@ -115,7 +107,11 @@ export type Route<T = unknown, R extends AnyObject = EmptyObject, C extends AnyO
  * @public
  * @interface
  */
-export type RouterContext<T = unknown, R extends AnyObject = EmptyObject, C extends AnyObject = EmptyObject> = C &
+export type RouterContext<
+  T = unknown,
+  R extends object = EmptyObject,
+  C extends StructuredCloneableObject = EmptyObject,
+> = C &
   Readonly<{
     /**
      * A sequence of routes connecting the root route to the resolved leaf
@@ -158,11 +154,12 @@ export type RouterContext<T = unknown, R extends AnyObject = EmptyObject, C exte
  * @typeParam T - The type of value returned by the {@link Route.action}.
  * @typeParam R - An extension of the Route type that provides specific data.
  * @typeParam C - An extension of the {@link RouterContext} type that provides
- * specific data.
+ * specific data. The data should be
+ * {@link https://developer.mozilla.org/en-US/docs/Glossary/Serializable_object | serializable}
  *
  * @public
  */
-export interface RouterOptions<T = unknown, R extends AnyObject = EmptyObject, C extends AnyObject = EmptyObject> {
+export interface RouterOptions<T = unknown> {
   /**
    * The base URL against which all routes will be resolved. This option is
    * designed for applications hosted on URLs like the following:
@@ -170,38 +167,26 @@ export interface RouterOptions<T = unknown, R extends AnyObject = EmptyObject, C
    * ```
    * https://example.com/path/to/my/root
    * ```
+   * @remarks
+   * It doesn't consider URLs from the `<base>` tag. If you use it, you should
+   * provide the base URL manually.
    *
    * @defaultValue `window.location.origin`
    */
   baseURL?: URL | string;
 
   /**
-   * Enables the use of old-style hash routing. When this option is enabled, all
-   * URLs will be resolved as follows:
-   *
-   * ```
-   * https://example.com/#/foo/bar
-   *                      ^ resolved route URL
-   * ```
-   *
-   * @defaultValue `false`
-   */
-  hash?: boolean;
-
-  /**
    * Invoked when an error is thrown during the resolution process.
    *
    * @remarks
-   *
    * This function is not called for 404 errors.
    *
    * @param error - The error thrown during the resolution.
-   * @param context - The context of the current resolution.
    *
    * @returns A result that will be delivered to the {@link Router.resolve}
    * method.
    */
-  errorHandler?(error: unknown, context: RouterContext<T, R, C>): ActionResult<T>;
+  errorHandler?(error: unknown): MaybePromise<T | null | undefined>;
 }
 
 /**
@@ -247,57 +232,63 @@ export class NotFoundError extends Error {
  * @typeParam T - The type of value returned by the {@link Route.action}.
  * @typeParam R - An extension of the Route type that provides specific data.
  * @typeParam C - An extension of the {@link RouterContext} type that provides
- * specific data.
+ * specific data. The data should be
+ * {@link https://developer.mozilla.org/en-US/docs/Glossary/Serializable_object | serializable}
  *
  * @public
  */
-export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends AnyObject = EmptyObject> {
-  readonly #routes: ReadonlyArray<Route<T, R, C>>;
+export class Router<T = unknown, R extends object = EmptyObject, C extends StructuredCloneableObject = EmptyObject> {
+  /**
+   * {@inheritDoc RouterOptions.baseURL}
+   */
+  readonly baseURL: URL;
+  /**
+   * A list of routes that are used to resolve the URL.
+   */
+  readonly routes: ReadonlyArray<Route<T, R, C>>;
+
+  /**
+   * The error handler that is invoked when an error is thrown during the
+   * resolution process.
+   *
+   * @internal
+   */
+  readonly #errorHandler?: (error: unknown) => MaybePromise<T | null | undefined>;
+
+  /**
+   * Contains a map of URL patterns and the {@link RouterContext.branch | route branches}
+   * associated with them.
+   *
+   * @internal
+   */
   readonly #patterns = new Map<URLPattern, ReadonlyArray<Route<T, R, C>>>();
-  readonly #options: RouterOptions<T, R, C>;
-  readonly #baseURL: string;
 
   /**
    * Constructs a router instance.
    *
    * @param routes - The root route or a list of routes.
-   * @param options - The optional parameter to customize the router behavior.
+   * @param optionsOrRouter - The optional parameter to customize the router
+   * behavior. Can also be another router instance to create a new router based
+   * on the existing one.
    */
-  constructor(routes: ReadonlyArray<Route<T, R, C>> | Route<T, R, C>, options: RouterOptions<T, R, C> = {}) {
-    this.#routes = Array.isArray(routes) ? routes : [routes];
-    this.#options = options;
-    this.#baseURL = String(this.#options.baseURL ?? location.origin);
+  constructor(
+    routes: ReadonlyArray<Route<T, R, C>> | Route<T, R, C>,
+    optionsOrRouter: RouterOptions<T> | Router<T, R, C> = {},
+  ) {
+    this.routes = Array.isArray(routes) ? routes : [routes];
+    this.baseURL = new URL(optionsOrRouter.baseURL ?? '', document.baseURI);
+    this.#errorHandler =
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      optionsOrRouter instanceof Router ? optionsOrRouter.#errorHandler : optionsOrRouter.errorHandler;
 
-    for (const branch of this.#traverse(this.#routes)) {
-      const route = branch.at(-1)!;
-
-      if (!route.children?.length) {
-        this.#patterns.set(
-          new URLPattern(
-            `${this.#options.hash ? '#/' : ''}${branch
-              .map((r) => r.path.replace(/^\/*(.*)\/*$/u, '$1'))
-              .filter(Boolean)
-              .join('/')}${this.#options.hash ? '' : '\\?*#*'}`,
-            this.#baseURL,
-          ),
-          branch,
-        );
-      }
+    for (const branch of this.#traverse(this.routes)) {
+      const url = branch
+        .map((r) => r.path.replace(/^\/*(.*?)\/*$/u, '$1'))
+        .filter((p) => p)
+        .join('/');
+      const pattern = new URLPattern(url, String(this.baseURL));
+      this.#patterns.set(pattern, branch);
     }
-  }
-
-  /**
-   * Gets the list of provided routes.
-   */
-  get routes(): ReadonlyArray<Route<T, R, C>> {
-    return this.#routes;
-  }
-
-  /**
-   * Gets the list of provided options.
-   */
-  get options(): RouterOptions<T, R, C> {
-    return this.#options;
   }
 
   /**
@@ -305,57 +296,70 @@ export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends An
    *
    * @param path - The path to be resolved. It can be either an absolute URL
    * or a string path relative to the {@link RouterOptions.baseURL}.
-   * @param context - Any data that needs to be sent to {@link Route.action}.
-   * The type of this parameter should match the `C` type parameter of the
-   * Route. If `C` is not provided or is equal to {@link AnyObject}, providing
-   * this parameter is forbidden.
    */
   async resolve(path: URL | string): Promise<T | null | undefined>;
+  /**
+   * Resolves the provided path based on the established routes.
+   *
+   * @param path - The path to be resolved. It can be either an absolute URL
+   * or a string path relative to the {@link RouterOptions.baseURL}.
+   * @param context - Any data that needs to be sent to {@link Route.action}.
+   * The type of this parameter should match the `C` type parameter of the
+   * Route. If `C` is not provided or is equal to {@link EmptyObject}, setting
+   * this parameter is forbidden.
+   */
   // eslint-disable-next-line @typescript-eslint/unified-signatures
   async resolve(path: URL | string, context: C extends EmptyObject ? never : C): Promise<T | null | undefined>;
   async resolve(path: URL | string, context?: C): Promise<T | null | undefined> {
-    const url = new URL(path, this.#baseURL);
+    const url = new URL(path, this.baseURL);
 
-    const [result, branch] = this.#search(url);
-
+    const [result, branch] = this.#execute(url);
     const iter = branch.values();
 
-    const next = async (): Promise<T | null | undefined> => {
+    const ctx = {
+      ...context!,
+      branch,
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      next,
+      result,
+      router: this,
+      url,
+    };
+
+    async function next() {
       const { done, value } = iter.next();
 
       if (done) {
         return undefined;
       }
 
-      if (!value.action) {
-        return await next();
+      if (value.action) {
+        return await value.action(ctx);
       }
 
-      const routeCtx = {
-        ...context!,
-        branch,
-        next,
-        result,
-        router: this,
-        url,
-      };
+      return await next();
+    }
 
-      try {
-        return await value.action(routeCtx);
-      } catch (error: unknown) {
-        if (this.#options.errorHandler) {
-          return await this.#options.errorHandler(error, routeCtx);
-        }
-
-        throw error;
+    try {
+      return await next();
+    } catch (error: unknown) {
+      if (this.#errorHandler) {
+        return await this.#errorHandler(error);
       }
-    };
 
-    // eslint-disable-next-line no-await-in-loop
-    return await next();
+      throw error;
+    }
   }
 
-  #search(url: URL): readonly [URLPatternResult, ReadonlyArray<Route<T, R, C>>] {
+  /**
+   * Resolves the provided path based on the established routes and finds the
+   * appropriate {@link RouterContext.branch | route branch}.
+   *
+   * @param url - The URL to be resolved.
+   * @returns - A tuple containing the result of the URL pattern matching and
+   * the {@link RouterContext.branch | route branch} associated with the URL.
+   */
+  #execute(url: URL): readonly [URLPatternResult, ReadonlyArray<Route<T, R, C>>] {
     for (const [pattern, branch] of this.#patterns) {
       const result = pattern.exec(url);
 
@@ -367,6 +371,12 @@ export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends An
     throw new NotFoundError(url);
   }
 
+  /**
+   * Traverses the routes tree and yields all possible {@link RouterContext.branch | branches}.
+   *
+   * @param routes - The list of routes to traverse.
+   * @param parents - The incomplete {@link RouterContext.branch | branches}.
+   */
   *#traverse(
     routes: ReadonlyArray<Route<T, R, C>>,
     parents: ReadonlyArray<Route<T, R, C>> = [],
@@ -374,10 +384,10 @@ export class Router<T = unknown, R extends AnyObject = EmptyObject, C extends An
     for (const route of routes) {
       const chain = [...parents, route];
 
-      yield chain;
-
       if (route.children) {
         yield* this.#traverse(route.children, chain);
+      } else {
+        yield chain;
       }
     }
   }

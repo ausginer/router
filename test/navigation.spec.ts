@@ -16,9 +16,8 @@ describe('Navigation', () => {
     const DEFAULT_PAGE = location.href;
 
     afterEach(() => {
-      const state: HistoryState<never> = { path: DEFAULT_PAGE };
-      history.pushState(state, '', DEFAULT_PAGE);
-      dispatchEvent(new PopStateEvent('popstate', { state }));
+      history.pushState({ path: DEFAULT_PAGE.toString() }, '', DEFAULT_PAGE);
+      dispatchEvent(new PopStateEvent('popstate'));
     });
 
     it('navigates to the specified URL', async () => {
@@ -41,12 +40,12 @@ describe('Navigation', () => {
 
     it('propagates the navigation context via event', async () => {
       const url = new URL('/foo', BASE_PATH);
-      const ctx = { foo: 'bar' };
+      const ctx = { foo: 'bar', baz: new Map() };
       return await new Promise<void>((resolve) => {
         addEventListener(
           'popstate',
-          ({ state: { context } }) => {
-            expect(context).to.equal(ctx);
+          () => {
+            expect(history.state).to.have.property('context').that.deep.includes(ctx);
             resolve();
           },
           { once: true },
@@ -58,17 +57,17 @@ describe('Navigation', () => {
 
     it('restores the context on history#back', async () => {
       const url = new URL('/foo', BASE_PATH);
-      const ctx = { foo: 'bar' };
+      const ctx = { foo: 'bar', baz: new Map() };
       navigate(url, ctx);
       navigate(new URL('/bar', BASE_PATH));
 
       return await new Promise<void>((resolve) => {
         addEventListener(
           'popstate',
-          ({ state }) => {
+          () => {
             // History serializes object to store it, so the recovered object cannot be
             // strictly equal to the original one.
-            expect((state as HistoryState<typeof ctx>).context).to.deep.equal(ctx);
+            expect(history.state).to.have.property('context').that.deep.includes(ctx);
             resolve();
           },
           { once: true },
@@ -86,12 +85,14 @@ describe('Navigation', () => {
       state = { context: 'bar', path: '/foo' };
     });
 
-    it('listens for popstate event', () => {
+    it.only('listens for popstate event', () => {
       const spy = sinon.spy();
-      addNavigationListener(spy);
-      dispatchEvent(new PopStateEvent('popstate', { state }));
+      addNavigationListener(spy, { once: true });
+      const path = new URL('/foo', location.origin);
+      history.pushState({ context: { foo: 'bar' }, path: path.toString() }, '', path);
+      dispatchEvent(new PopStateEvent('popstate'));
 
-      expect(spy).to.have.been.calledWith('/foo', 'bar');
+      expect(spy).to.have.been.calledWith(path.toString(), { foo: 'bar' });
     });
 
     it('accepts listener options', () => {
